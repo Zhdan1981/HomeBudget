@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { HashRouter, Routes, Route } from 'react-router-dom';
 import { BudgetProvider } from './context/BudgetContext';
@@ -9,6 +10,8 @@ import CategoryTransactionPage from './components/AddTransactionModal';
 import SettingsPage from './pages/SettingsPage';
 import EditCategoryPage from './pages/EditCategoryPage';
 import EditParticipantPage from './pages/EditParticipantPage';
+import AuthPage from './pages/AuthPage';
+import ProtectedRoute from './components/ProtectedRoute';
 
 
 const App: React.FC = () => {
@@ -16,17 +19,20 @@ const App: React.FC = () => {
         <BudgetProvider>
             <HashRouter>
                 <Routes>
-                    <Route path="/" element={<MainLayout />}>
-                        <Route index element={<BudgetPage />} />
-                        <Route path="history" element={<HistoryPage />} />
-                        <Route path="charts" element={<ChartsPage />} />
+                    <Route path="/auth" element={<AuthPage />} />
+                    <Route element={<ProtectedRoute />}>
+                        <Route path="/" element={<MainLayout />}>
+                            <Route index element={<BudgetPage />} />
+                            <Route path="history" element={<HistoryPage />} />
+                            <Route path="charts" element={<ChartsPage />} />
+                        </Route>
+                        <Route path="/settings" element={<SettingsPage />} />
+                        <Route path="/category/:id" element={<CategoryTransactionPage />} />
+                        <Route path="/settings/category/new" element={<EditCategoryPage />} />
+                        <Route path="/settings/category/:id" element={<EditCategoryPage />} />
+                        <Route path="/settings/participant/new" element={<EditParticipantPage />} />
+                        <Route path="/settings/participant/:name" element={<EditParticipantPage />} />
                     </Route>
-                    <Route path="/settings" element={<SettingsPage />} />
-                    <Route path="/category/:id" element={<CategoryTransactionPage />} />
-                    <Route path="/settings/category/new" element={<EditCategoryPage />} />
-                    <Route path="/settings/category/:id" element={<EditCategoryPage />} />
-                    <Route path="/settings/participant/new" element={<EditParticipantPage />} />
-                    <Route path="/settings/participant/:name" element={<EditParticipantPage />} />
                 </Routes>
             </HashRouter>
         </BudgetProvider>

@@ -1,17 +1,24 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useBudget } from '../hooks/useBudget';
 import { CategoryType } from '../types';
 import { ICONS } from '../constants';
-import { Plus, Pencil, Trash2, ChevronDown, Download, Upload, RefreshCw, SunMoon, ChevronRight, User } from 'lucide-react';
+import { Plus, Pencil, Trash2, ChevronDown, Download, Upload, RefreshCw, SunMoon, ChevronRight, User, LogOut } from 'lucide-react';
 import SubPageHeader from '../components/SubPageHeader';
 import ThemeSwitcher from '../components/ThemeSwitcher';
+import { AuthContext } from '../context/AuthContext';
 
 const SettingsPage: React.FC = () => {
     const { state, dispatch } = useBudget();
+    const { logout } = useContext(AuthContext);
     const navigate = useNavigate();
     const importInputRef = useRef<HTMLInputElement>(null);
     const [isThemeSwitcherOpen, setThemeSwitcherOpen] = useState(false);
+
+    const handleLogout = async () => {
+        await logout();
+        navigate('/auth');
+    };
 
     const handleDeleteCategory = (categoryId: string, categoryName: string) => {
         if (window.confirm(`Вы уверены, что хотите удалить категорию "${categoryName}"? Все связанные транзакции также будут удалены.`)) {
@@ -31,7 +38,8 @@ const SettingsPage: React.FC = () => {
 
     const handleExport = () => {
         try {
-            const dataStr = JSON.stringify(state, null, 2);
+            const { isDataLoaded, ...dataToExport } = state;
+            const dataStr = JSON.stringify(dataToExport, null, 2);
             const dataBlob = new Blob([dataStr], { type: 'application/json' });
             const url = URL.createObjectURL(dataBlob);
             const link = document.createElement('a');
@@ -64,9 +72,8 @@ const SettingsPage: React.FC = () => {
                 const parsedState = JSON.parse(text);
                 if (parsedState.categories && parsedState.transactions && parsedState.theme && parsedState.participants) {
                     if (window.confirm("Вы уверены, что хотите импортировать эти данные? Все текущие данные будут перезаписаны.")) {
-                        dispatch({ type: 'SET_STATE', payload: parsedState });
+                        dispatch({ type: 'SET_USER_DATA', payload: parsedState });
                         alert("Данные успешно импортированы.");
-                        navigate('/', { replace: true });
                     }
                 } else {
                     throw new Error("Invalid state file format");
@@ -205,12 +212,20 @@ const SettingsPage: React.FC = () => {
                             <span>Импорт данных</span>
                         </button>
                         <input type="file" ref={importInputRef} onChange={handleFileChange} accept=".json" className="hidden" />
-                        <button onClick={handleReset} className="w-full flex items-center justify-center gap-3 bg-red-500/10 border border-red-500/20 text-red-500 font-semibold py-3 rounded-lg hover:bg-red-500/20 transition-colors">
+                        <button onClick={handleReset} className="w-full flex items-center justify-center gap-3 bg-yellow-500/10 border border-yellow-500/20 text-yellow-500 font-semibold py-3 rounded-lg hover:bg-yellow-500/20 transition-colors">
                             <RefreshCw size={20} />
                             <span>Сброс данных</span>
                         </button>
                     </div>
                 </AccordionItem>
+
+                 <div className="mt-8">
+                    <button onClick={handleLogout} className="w-full flex items-center justify-center gap-3 bg-red-500/10 border border-red-500/20 text-red-500 font-semibold py-3 rounded-lg hover:bg-red-500/20 transition-colors">
+                        <LogOut size={20} />
+                        <span>Выйти</span>
+                    </button>
+                </div>
+
             </div>
             <ThemeSwitcher 
                 isOpen={isThemeSwitcherOpen} 

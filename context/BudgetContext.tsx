@@ -1,34 +1,47 @@
-import React, { createContext, useReducer, useEffect, ReactNode, Dispatch } from 'react';
+import React, { createContext, useReducer, useEffect, ReactNode, Dispatch, useContext, useCallback } from 'react';
 import { Category, Transaction, Theme } from '../types';
 import { INITIAL_CATEGORIES, INITIAL_PARTICIPANTS } from '../constants';
+import { AuthContext } from './AuthContext';
+import { getUserData, saveUserData } from '../services/api';
+import { useDebounce } from '../hooks/useDebounce';
 
 interface AppState {
     categories: Category[];
     transactions: Transaction[];
     theme: Theme;
     participants: string[];
+    isDataLoaded: boolean;
 }
 
 type Action =
     | { type: 'ADD_TRANSACTION'; payload: Transaction }
     | { type: 'SET_THEME'; payload: Theme }
-    | { type: 'SET_STATE'; payload: AppState }
+    | { type: 'SET_USER_DATA'; payload: Omit<AppState, 'isDataLoaded'> }
     | { type: 'REORDER_CATEGORIES'; payload: Category[] }
     | { type: 'UPDATE_CATEGORY_BALANCE'; payload: { categoryId: string; balance: number } }
     | { type: 'ADD_CATEGORY'; payload: Category }
     | { type: 'UPDATE_CATEGORY'; payload: Category }
-    | { type: 'DELETE_CATEGORY'; payload: string } // payload is categoryId
+    | { type: 'DELETE_CATEGORY'; payload: string }
     | { type: 'ADD_PARTICIPANT'; payload: string }
     | { type: 'UPDATE_PARTICIPANT'; payload: { oldName: string; newName: string } }
     | { type: 'DELETE_PARTICIPANT'; payload: string }
-    | { type: 'RESET_STATE' };
+    | { type: 'RESET_STATE' }
+    | { type: 'LOGOUT_USER' };
 
 const initialState: AppState = {
+    categories: [],
+    transactions: [],
+    theme: 'Полночь',
+    participants: [],
+    isDataLoaded: false,
+};
+
+const getInitialUserState = (): Omit<AppState, 'isDataLoaded'> => ({
     categories: INITIAL_CATEGORIES,
     transactions: [],
     theme: 'Полночь',
     participants: INITIAL_PARTICIPANTS,
-};
+});
 
 const budgetReducer = (state: AppState, action: Action): AppState => {
     switch (action.type) {
@@ -48,8 +61,8 @@ const budgetReducer = (state: AppState, action: Action): AppState => {
         }
         case 'SET_THEME':
             return { ...state, theme: action.payload };
-        case 'SET_STATE':
-            return action.payload;
+        case 'SET_USER_DATA':
+            return { ...action.payload, isDataLoaded: true };
         case 'REORDER_CATEGORIES':
             return { ...state, categories: action.payload };
         case 'UPDATE_CATEGORY_BALANCE':
@@ -81,7 +94,7 @@ const budgetReducer = (state: AppState, action: Action): AppState => {
             };
         case 'ADD_PARTICIPANT':
             if (state.participants.includes(action.payload)) {
-                return state; // Avoid duplicates
+                return state;
             }
             return {
                 ...state,
@@ -100,23 +113,24 @@ const budgetReducer = (state: AppState, action: Action): AppState => {
                 ),
             };
         case 'DELETE_PARTICIPANT':
-            // Cannot delete the 'Общие' participant
             if (action.payload === 'Общие') return state;
             return {
                 ...state,
                 participants: state.participants.filter(p => p !== action.payload),
                 transactions: state.transactions.map(tx =>
                     tx.participant === action.payload
-                        ? { ...tx, participant: 'Общие' } // Reassign to 'Shared'
+                        ? { ...tx, participant: 'Общие' }
                         : tx
                 ),
             };
         case 'RESET_STATE':
-            // Reset to initial state but preserve the theme
             return {
-                ...initialState,
-                theme: state.theme,
+                ...getInitialUserState(),
+                theme: state.theme, // Preserve theme on reset
+                isDataLoaded: true,
             };
+        case 'LOGOUT_USER':
+            return initialState;
         default:
             return state;
     }
@@ -131,34 +145,41 @@ export const BudgetContext = createContext<{
 });
 
 export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+    const { user } = useContext(AuthContext);
     const [state, dispatch] = useReducer(budgetReducer, initialState);
+    const debouncedState = useDebounce(state, 500);
 
+    // Load user data on login
     useEffect(() => {
-        try {
-            const storedState = localStorage.getItem('budgetAppState');
-            if (storedState) {
-                const parsedState = JSON.parse(storedState);
-                if (!parsedState.categories || parsedState.categories.length === 0) {
-                    parsedState.categories = INITIAL_CATEGORIES;
+        if (user) {
+            const loadData = async () => {
+                const data = await getUserData(user.id);
+                if (data) {
+                    dispatch({ type: 'SET_USER_DATA', payload: data });
+                } else {
+                    // This is a new user, set initial state for them
+                    const initialData = getInitialUserState();
+                    dispatch({ type: 'SET_USER_DATA', payload: initialData });
                 }
-                if (!parsedState.participants || parsedState.participants.length === 0) {
-                    parsedState.participants = INITIAL_PARTICIPANTS;
-                }
-                dispatch({ type: 'SET_STATE', payload: parsedState });
-            }
-        } catch (error) {
-            console.error("Failed to load state from localStorage", error);
+            };
+            loadData();
+        } else {
+            dispatch({ type: 'LOGOUT_USER' });
         }
-    }, []);
+    }, [user]);
 
+    // Save user data on change (debounced)
     useEffect(() => {
-        try {
-            localStorage.setItem('budgetAppState', JSON.stringify(state));
-            document.documentElement.setAttribute('data-theme', state.theme);
-        } catch (error) {
-            console.error("Failed to save state to localStorage", error);
+        if (user && debouncedState.isDataLoaded) {
+            const { isDataLoaded, ...dataToSave } = debouncedState;
+            saveUserData(user.id, dataToSave);
         }
-    }, [state]);
+    }, [debouncedState, user]);
+
+    // Apply theme to DOM
+    useEffect(() => {
+        document.documentElement.setAttribute('data-theme', state.theme);
+    }, [state.theme]);
 
     return (
         <BudgetContext.Provider value={{ state, dispatch }}>

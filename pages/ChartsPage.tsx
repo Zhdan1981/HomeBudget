@@ -26,7 +26,7 @@ const StatCard: React.FC<{ title: string; value: number; colorClass: string }> =
 
 const ChartsPage: React.FC = () => {
     const { state } = useBudget();
-    const { transactions, categories, categories: allCategories } = state;
+    const { transactions, categories: allCategories } = state;
     const [timeRange, setTimeRange] = useState<TimeRange>('month');
 
     const filteredTransactions = useMemo(() => {
@@ -67,7 +67,7 @@ const ChartsPage: React.FC = () => {
         filteredTransactions
             .filter(tx => tx.type === TransactionType.Expense)
             .forEach(tx => {
-                const categoryName = categories.find(c => c.id === tx.categoryId)?.name || 'Прочее';
+                const categoryName = allCategories.find(c => c.id === tx.categoryId)?.name || 'Прочее';
                 if (!expensesByCategory[categoryName]) {
                     expensesByCategory[categoryName] = 0;
                 }
@@ -79,74 +79,74 @@ const ChartsPage: React.FC = () => {
             .filter(item => item.value > 0)
             .sort((a,b) => b.value - a.value);
 
-    }, [filteredTransactions, categories]);
+    }, [filteredTransactions, allCategories]);
     
     const balanceHistoryData = useMemo(() => {
         const sortedTx = [...transactions].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
         if (sortedTx.length === 0) return [];
-
+    
         const totalCurrentBalance = allCategories.reduce((sum, cat) => sum + cat.balance, 0);
         const totalTransactionImpact = transactions.reduce((sum, tx) => sum + tx.amount, 0);
         const balanceBeforeAllTx = totalCurrentBalance + totalTransactionImpact;
-
-        const balancesOverTime = [{ date: new Date(0), balance: balanceBeforeAllTx }];
+    
+        const balancePoints = [{ date: new Date(0), balance: balanceBeforeAllTx }];
         let runningBalance = balanceBeforeAllTx;
         for (const tx of sortedTx) {
             runningBalance -= tx.amount;
-            balancesOverTime.push({ date: new Date(tx.date), balance: runningBalance });
+            balancePoints.push({ date: new Date(tx.date), balance: runningBalance });
         }
-
+        balancePoints.push({ date: new Date(), balance: totalCurrentBalance });
+    
         const now = new Date();
-        let chartStartDate = new Date(balancesOverTime[1]?.date || now);
-        
-        switch (timeRange) {
-            case 'week':
-                chartStartDate = new Date(new Date().setDate(now.getDate() - 7));
-                break;
-            case 'month':
-                chartStartDate = new Date(new Date().setMonth(now.getMonth() - 1));
-                break;
-            case 'year':
-                chartStartDate = new Date(new Date().setFullYear(now.getFullYear() - 1));
-                break;
-            case 'all':
-                // Use default start date
-                break;
-        }
-
-        const relevantBalances = balancesOverTime.filter(b => b.date >= chartStartDate);
-        
-        if (timeRange === 'year' || timeRange === 'all') {
-            const monthlyBalances: { [key: string]: { balance: number, date: Date } } = {};
-            relevantBalances.forEach(record => {
-                const label = new Date(record.date).toLocaleDateString('ru-RU', { year: 'numeric', month: 'short' });
-                monthlyBalances[label] = { balance: record.balance, date: record.date };
-            });
-            return Object.entries(monthlyBalances)
-                .map(([date, data]) => ({ date, balance: data.balance, originalDate: data.date }))
-                .sort((a, b) => a.originalDate.getTime() - b.originalDate.getTime())
-                .map(({ date, balance }) => ({ date, balance }));
-        }
-
-        const dailyData = [];
-        let dateCursor = new Date(chartStartDate);
-        while (dateCursor <= now) {
-            let pointBalance = balanceBeforeAllTx;
-            for (const record of relevantBalances) {
-                if (record.date <= dateCursor) {
-                    pointBalance = record.balance;
-                } else {
-                    break;
-                }
+        let chartStartDate = new Date(balancePoints[1]?.date || now);
+        if (timeRange !== 'all') {
+            chartStartDate = new Date();
+            switch (timeRange) {
+                case 'week': chartStartDate.setDate(now.getDate() - 7); break;
+                case 'month': chartStartDate.setMonth(now.getMonth() - 1); break;
+                case 'year': chartStartDate.setFullYear(now.getFullYear() - 1); break;
             }
-            dailyData.push({
-                date: dateCursor.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' }),
-                balance: pointBalance,
-            });
+        }
+        chartStartDate.setHours(0, 0, 0, 0);
+    
+        const startPoint = [...balancePoints].reverse().find(p => p.date <= chartStartDate) || balancePoints[0];
+        const relevantPoints = balancePoints.filter(p => p.date >= chartStartDate);
+    
+        const dataMap = new Map<string, number>();
+        dataMap.set(chartStartDate.toISOString().split('T')[0], startPoint.balance);
+        relevantPoints.forEach(p => {
+            dataMap.set(p.date.toISOString().split('T')[0], p.balance);
+        });
+    
+        const finalData: { date: Date, balance: number }[] = [];
+        let dateCursor = new Date(chartStartDate);
+        let lastKnownBalance = startPoint.balance;
+    
+        while (dateCursor <= now) {
+            const key = dateCursor.toISOString().split('T')[0];
+            if (dataMap.has(key)) {
+                lastKnownBalance = dataMap.get(key)!;
+            }
+            finalData.push({ date: new Date(dateCursor), balance: lastKnownBalance });
             dateCursor.setDate(dateCursor.getDate() + 1);
         }
-        return dailyData;
-
+        
+        if (timeRange === 'year' || timeRange === 'all') {
+            const monthlyData = new Map<string, { balance: number; date: Date }>();
+            finalData.forEach(p => {
+                const key = p.date.toLocaleDateString('ru-RU', { year: 'numeric', month: 'short' });
+                monthlyData.set(key, { balance: p.balance, date: p.date });
+            });
+            
+            return Array.from(monthlyData.entries())
+                .sort((a, b) => a[1].date.getTime() - b[1].date.getTime())
+                .map(([key, value]) => ({ date: key, balance: value.balance }));
+        }
+    
+        return finalData.map(p => ({
+            date: p.date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' }),
+            balance: p.balance
+        }));
     }, [transactions, allCategories, timeRange]);
 
     return (
@@ -179,13 +179,16 @@ const ChartsPage: React.FC = () => {
                 {expenseData.length > 0 ? (
                     <ResponsiveContainer width="100%" height={300}>
                         <PieChart>
-                            <Pie data={expenseData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} fill="#8884d8" labelLine={false} label={({ cx, cy, midAngle, innerRadius, outerRadius, percent }) => {
+                            {/* FIX: The explicit type for the label prop was incorrect due to incomplete typings in the 'recharts' library. Switched to 'any' to resolve the TypeScript error. */}
+                            <Pie data={expenseData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} fill="#8884d8" labelLine={false} label={({ cx, cy, midAngle, innerRadius, outerRadius, percent }: any) => {
                                 const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
                                 const x = cx + (radius + 20) * Math.cos(-midAngle * Math.PI / 180);
                                 const y = cy + (radius + 20) * Math.sin(-midAngle * Math.PI / 180);
+                                const percentValue = (percent || 0) * 100;
+                                if (percentValue < 5) return null; // Hide small labels
                                 return (
                                 <text x={x} y={y} fill="var(--text-primary)" textAnchor={x > cx ? 'start' : 'end'} dominantBaseline="central">
-                                    {`${(percent * 100).toFixed(0)}%`}
+                                    {`${percentValue.toFixed(0)}%`}
                                 </text>
                                 );
                             }}>
@@ -193,7 +196,7 @@ const ChartsPage: React.FC = () => {
                                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                 ))}
                             </Pie>
-                            <Tooltip formatter={(value: number) => `${value.toFixed(2)} ₽`} contentStyle={{ backgroundColor: 'var(--background)', border: '1px solid var(--border)' }} />
+                            <Tooltip formatter={(value) => `${Number(value).toFixed(2)} ₽`} contentStyle={{ backgroundColor: 'var(--background)', border: '1px solid var(--border)' }} />
                             <Legend wrapperStyle={{ color: 'var(--text-secondary)' }}/>
                         </PieChart>
                     </ResponsiveContainer>
@@ -209,8 +212,8 @@ const ChartsPage: React.FC = () => {
                         <LineChart data={balanceHistoryData}>
                             <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                             <XAxis dataKey="date" stroke="var(--text-secondary)" fontSize={12} />
-                            <YAxis stroke="var(--text-secondary)" fontSize={12} tickFormatter={(value) => `${(value/1000).toFixed(0)}k`} />
-                            <Tooltip formatter={(value: number) => `${value.toFixed(2)} ₽`} contentStyle={{ backgroundColor: 'var(--background)', border: '1px solid var(--border)' }} />
+                            <YAxis stroke="var(--text-secondary)" fontSize={12} tickFormatter={(value) => `${(Number(value)/1000).toFixed(0)}k`} />
+                            <Tooltip formatter={(value) => `${Number(value).toFixed(2)} ₽`} contentStyle={{ backgroundColor: 'var(--background)', border: '1px solid var(--border)' }} />
                             <Legend wrapperStyle={{ color: 'var(--text-secondary)' }}/>
                             <Line type="monotone" dataKey="balance" name="Общий баланс" stroke="var(--accent)" strokeWidth={2} dot={false} />
                         </LineChart>

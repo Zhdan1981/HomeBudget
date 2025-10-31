@@ -33,3 +33,9 @@ export interface Transaction {
 }
 
 export type Theme = 'Полночь' | 'Океан' | 'Графит' | 'Космос' | 'Глубина' | 'Облако' | 'Мята' | 'Песок' | 'Бумага' | 'Зефир';
+
+export interface User {
+  id: string;
+  email: string;
+  password?: string; // Should be hashed in a real app
+}

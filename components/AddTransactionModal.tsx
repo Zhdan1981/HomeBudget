@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Category, TransactionType } from '../types';
 import { useBudget } from '../hooks/useBudget';
-import { ArrowLeft, Clock, ChevronDown, X, Plus } from 'lucide-react';
+import { ArrowLeft, ChevronDown, X, Plus } from 'lucide-react';
 
 interface TransactionFormState {
     id: number;
@@ -18,8 +18,9 @@ const CategoryTransactionPage: React.FC = () => {
     const category = state.categories.find(c => c.id === categoryId);
 
     const [type, setType] = useState<TransactionType>(TransactionType.Expense);
-    const [fromAccountId, setFromAccountId] = useState<string>(categoryId || '');
-    const [toAccountId, setToAccountId] = useState<string>('');
+    // State specifically for transfers
+    const [transferFromId, setTransferFromId] = useState<string>(categoryId || '');
+    const [transferToId, setTransferToId] = useState<string>('');
     
     const [isEditingBalance, setIsEditingBalance] = useState(false);
     const [editedBalanceStr, setEditedBalanceStr] = useState('');
@@ -29,13 +30,14 @@ const CategoryTransactionPage: React.FC = () => {
     ]);
 
     useEffect(() => {
+        // This effect now correctly sets up default accounts for transfers
         if (categoryId) {
-            setFromAccountId(categoryId);
+            setTransferFromId(categoryId);
             const firstOtherCategory = state.categories.find(c => c.id !== categoryId);
             if (firstOtherCategory) {
-                setToAccountId(firstOtherCategory.id);
+                setTransferToId(firstOtherCategory.id);
             } else if (state.categories.length > 0) {
-                 setToAccountId(state.categories[0].id);
+                 setTransferToId(state.categories[0].id);
             }
         }
     }, [categoryId, state.categories]);
@@ -53,7 +55,6 @@ const CategoryTransactionPage: React.FC = () => {
             forms.map(form => form.id === id ? { ...form, [field]: value } : form)
         );
     };
-
 
     if (!category) {
         return (
@@ -91,14 +92,16 @@ const CategoryTransactionPage: React.FC = () => {
 
             switch (type) {
                 case TransactionType.Expense:
-                    newTransaction = { ...transactionDetails, categoryId: fromAccountId, amount, type };
+                    // Expense is always recorded against the current category.
+                    newTransaction = { ...transactionDetails, categoryId: category.id, amount, type };
                     break;
                 case TransactionType.Income:
-                    newTransaction = { ...transactionDetails, categoryId: fromAccountId, amount: -amount, type };
+                    // Income is always recorded for the current category. Amount is negative for reducer logic.
+                    newTransaction = { ...transactionDetails, categoryId: category.id, amount: -amount, type };
                     break;
                 case TransactionType.Transfer:
-                    if (fromAccountId === toAccountId) return;
-                    newTransaction = { ...transactionDetails, categoryId: fromAccountId, toCategoryId: toAccountId, amount, type };
+                    if (transferFromId === transferToId) return;
+                    newTransaction = { ...transactionDetails, categoryId: transferFromId, toCategoryId: transferToId, amount, type };
                     break;
                 default:
                     return;
@@ -160,9 +163,7 @@ const CategoryTransactionPage: React.FC = () => {
                 <span className={`w-3 h-3 rounded-full ${category.color.replace('text-','bg-')}`}></span>
                 <span className="font-bold text-lg">{category.name}</span>
             </div>
-            <button className="p-2 -mr-2 rounded-full hover:bg-card">
-                <Clock size={24} />
-            </button>
+            <div className="w-8 h-8" /> 
         </header>
 
         <section className="text-center py-4 shrink-0">
@@ -235,33 +236,12 @@ const CategoryTransactionPage: React.FC = () => {
                 ))}
             </div>
 
-            {type === TransactionType.Expense && (
-                 <div>
-                    <label className="block text-sm font-medium text-text-secondary mb-1">Откуда взять (необязательно)</label>
-                    <SelectWrapper>
-                        <select value={fromAccountId} onChange={(e) => setFromAccountId(e.target.value)} className="w-full bg-card border border-border rounded-lg p-3 text-text-primary focus:ring-2 focus:ring-accent focus:border-accent outline-none appearance-none pr-10">
-                            <option key={category.id} value={category.id}>С кошелька "{category.name}"</option>
-                            {state.categories.filter(c => c.id !== categoryId).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                        </select>
-                    </SelectWrapper>
-                </div>
-            )}
-            {type === TransactionType.Income && (
-                 <div>
-                    <label className="block text-sm font-medium text-text-secondary mb-1">Куда зачислить</label>
-                    <SelectWrapper>
-                        <select defaultValue={fromAccountId} onChange={(e) => setFromAccountId(e.target.value)} className="w-full bg-card border border-border rounded-lg p-3 text-text-primary focus:ring-2 focus:ring-accent focus:border-accent outline-none appearance-none pr-10">
-                            {state.categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                        </select>
-                    </SelectWrapper>
-                </div>
-            )}
             {type === TransactionType.Transfer && (
                 <div className="bg-card p-4 rounded-lg space-y-4 border border-border">
                     <div>
                         <label className="block text-sm font-medium text-text-secondary mb-1">Откуда</label>
                         <SelectWrapper>
-                            <select value={fromAccountId} onChange={(e) => setFromAccountId(e.target.value)} required className="w-full bg-background border border-border rounded-lg p-3 text-text-primary focus:ring-2 focus:ring-accent focus:border-accent outline-none appearance-none pr-10">
+                            <select value={transferFromId} onChange={(e) => setTransferFromId(e.target.value)} required className="w-full bg-background border border-border rounded-lg p-3 text-text-primary focus:ring-2 focus:ring-accent focus:border-accent outline-none appearance-none pr-10">
                                 {state.categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                             </select>
                         </SelectWrapper>
@@ -269,13 +249,14 @@ const CategoryTransactionPage: React.FC = () => {
                     <div>
                         <label className="block text-sm font-medium text-text-secondary mb-1">Куда</label>
                         <SelectWrapper>
-                            <select value={toAccountId} onChange={(e) => setToAccountId(e.target.value)} required className="w-full bg-background border border-border rounded-lg p-3 text-text-primary focus:ring-2 focus:ring-accent focus:border-accent outline-none appearance-none pr-10">
-                                {state.categories.filter(c => c.id !== fromAccountId).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                            <select value={transferToId} onChange={(e) => setTransferToId(e.target.value)} required className="w-full bg-background border border-border rounded-lg p-3 text-text-primary focus:ring-2 focus:ring-accent focus:border-accent outline-none appearance-none pr-10">
+                                {state.categories.filter(c => c.id !== transferFromId).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                             </select>
                         </SelectWrapper>
                     </div>
                 </div>
             )}
+            
             <button
                 type="button"
                 onClick={addTransactionForm}

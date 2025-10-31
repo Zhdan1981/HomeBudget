@@ -14,6 +14,12 @@ const HistoryPage: React.FC = () => {
     const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
     const [selectedParticipants, setSelectedParticipants] = useState<string[]>([]);
 
+    const activeFilterCount =
+        (startDate ? 1 : 0) +
+        (endDate ? 1 : 0) +
+        selectedCategories.length +
+        selectedParticipants.length;
+
     const getCategoryName = (id: string) => categories.find(c => c.id === id)?.name || 'Неизвестно';
 
     const filteredAndSortedTransactions = useMemo(() => {
@@ -30,7 +36,7 @@ const HistoryPage: React.FC = () => {
         }
 
         if (selectedCategories.length > 0) {
-            filtered = filtered.filter(tx => selectedCategories.includes(tx.categoryId));
+            filtered = filtered.filter(tx => selectedCategories.includes(tx.categoryId) || (tx.toCategoryId && selectedCategories.includes(tx.toCategoryId)));
         }
 
         if (selectedParticipants.length > 0) {
@@ -58,12 +64,17 @@ const HistoryPage: React.FC = () => {
                 <h1 className="text-2xl font-bold text-text-primary">История транзакций</h1>
                 <button 
                     onClick={() => setShowFilters(!showFilters)} 
-                    className="flex items-center gap-2 p-2 rounded-lg bg-card hover:bg-border text-text-secondary hover:text-text-primary transition-colors"
+                    className="relative flex items-center gap-2 p-2 rounded-lg bg-card hover:bg-border text-text-secondary hover:text-text-primary transition-colors"
                     aria-expanded={showFilters}
                     aria-controls="filter-panel"
                 >
                     <Filter size={20} />
                     <span>Фильтры</span>
+                    {activeFilterCount > 0 && (
+                        <span className="absolute -top-2 -right-2 bg-accent text-accent-text text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                            {activeFilterCount}
+                        </span>
+                    )}
                 </button>
             </div>
             
