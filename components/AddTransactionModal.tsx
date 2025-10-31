@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Category, TransactionType, Participant } from '../types';
+import { Category, TransactionType } from '../types';
 import { useBudget } from '../hooks/useBudget';
 import { ArrowLeft, Clock, ChevronDown, X, Plus } from 'lucide-react';
 
@@ -66,7 +66,7 @@ const CategoryTransactionPage: React.FC = () => {
         );
     }
     
-    const participantFromName = Object.values(Participant).find(p => p === category.name) || Participant.Shared;
+    const participantFromName = state.participants.find(p => p === category.name) || 'Общие';
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();

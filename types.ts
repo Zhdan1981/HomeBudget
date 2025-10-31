@@ -1,4 +1,3 @@
-
 import { LucideIcon } from 'lucide-react';
 
 export enum CategoryType {
@@ -11,14 +10,6 @@ export enum TransactionType {
     Expense = "Расход",
     Income = "Доход",
     Transfer = "Перевод"
-}
-
-export enum Participant {
-    Me = "Ждан",
-    Nadya = "Надя",
-    Andrey = "Андрей",
-    Dasha = "Даша",
-    Shared = "Общие"
 }
 
 export interface Category {
@@ -35,7 +26,7 @@ export interface Transaction {
     categoryId: string;
     amount: number;
     type: TransactionType;
-    participant: Participant;
+    participant: string;
     note: string;
     date: string; // ISO string
     toCategoryId?: string; // For transfers

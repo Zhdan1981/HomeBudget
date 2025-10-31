@@ -1,16 +1,13 @@
-
 import React, { useState, useMemo } from 'react';
 import { useBudget } from '../hooks/useBudget';
 import Header from '../components/Header';
 import BudgetCategoryCard from '../components/BudgetCategoryCard';
-import ThemeSwitcher from '../components/ThemeSwitcher';
 import { Category } from '../types';
 import { useNavigate } from 'react-router-dom';
 
 const BudgetPage: React.FC = () => {
     const { state, dispatch } = useBudget();
     const navigate = useNavigate();
-    const [isThemeSwitcherOpen, setThemeSwitcherOpen] = useState(false);
     const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
 
     const handleDragStart = (index: number) => {
@@ -64,7 +61,7 @@ const BudgetPage: React.FC = () => {
 
     return (
         <div className="max-w-md mx-auto">
-            <Header onThemeClick={() => setThemeSwitcherOpen(true)} />
+            <Header />
             
             <section className="text-center p-4">
                 <p className="text-sm text-text-secondary">Общий баланс</p>
@@ -89,11 +86,6 @@ const BudgetPage: React.FC = () => {
                     />
                 ))}
             </section>
-            
-            <ThemeSwitcher 
-                isOpen={isThemeSwitcherOpen} 
-                onClose={() => setThemeSwitcherOpen(false)}
-            />
         </div>
     );
 };

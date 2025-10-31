@@ -1,25 +1,13 @@
-
 import React from 'react';
-import { Settings, Plus, SunMoon } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Settings } from 'lucide-react';
 
-interface HeaderProps {
-    onThemeClick: () => void;
-}
-
-const Header: React.FC<HeaderProps> = ({ onThemeClick }) => {
+const Header: React.FC = () => {
     return (
-        <header className="p-4 flex justify-between items-center text-text-secondary">
-            <button className="p-2 hover:text-text-primary transition-colors">
+        <header className="p-4 flex justify-end items-center text-text-secondary">
+            <Link to="/settings" className="p-2 hover:text-text-primary transition-colors">
                 <Settings size={24} />
-            </button>
-            <div className="flex items-center gap-4">
-                 <button className="p-2 hover:text-text-primary transition-colors">
-                    <Plus size={28} />
-                </button>
-                <button onClick={onThemeClick} className="p-2 hover:text-text-primary transition-colors">
-                    <SunMoon size={24} />
-                </button>
-            </div>
+            </Link>
         </header>
     );
 };

@@ -1,4 +1,3 @@
-
 import { Category, CategoryType, Theme } from './types';
 // fix: Corrected icon import from UtensilsCross to UtensilsCrossed and updated references.
 import { User, Users, Wallet, Fuel, UtensilsCrossed, Plane, Warehouse, ShoppingCart, Banknote, Landmark, Package, Store, ShoppingBag, ShoppingBasket } from 'lucide-react';
@@ -12,6 +11,15 @@ export const THEMES: Theme[] = [
 export const ICONS: { [key: string]: React.FC<React.SVGProps<SVGSVGElement>> } = {
     User, Users, Wallet, Fuel, UtensilsCrossed, Plane, Warehouse, ShoppingCart, Banknote, Landmark, Package, Store, ShoppingBag, ShoppingBasket
 };
+
+export const CATEGORY_COLORS = [
+    "text-sky-400", "text-pink-400", "text-amber-400", "text-emerald-400",
+    "text-blue-400", "text-orange-400", "text-red-400", "text-lime-400",
+    "text-indigo-400", "text-purple-400", "text-green-500", "text-cyan-400",
+    "text-violet-400", "text-rose-400", "text-teal-400", "text-fuchsia-400"
+];
+
+export const INITIAL_PARTICIPANTS: string[] = ["Ждан", "Надя", "Андрей", "Даша", "Общие"];
 
 export const INITIAL_CATEGORIES: Category[] = [
     { id: "1", name: "Ждан", type: CategoryType.Personal, balance: 63964.00, icon: "User", color: "text-sky-400" },

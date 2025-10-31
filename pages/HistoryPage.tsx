@@ -1,11 +1,11 @@
 import React, { useState, useMemo } from 'react';
 import { useBudget } from '../hooks/useBudget';
-import { TransactionType, Participant } from '../types';
+import { TransactionType } from '../types';
 import { Filter } from 'lucide-react';
 
 const HistoryPage: React.FC = () => {
     const { state } = useBudget();
-    const { transactions, categories } = state;
+    const { transactions, categories, participants } = state;
 
     // Filter state
     const [showFilters, setShowFilters] = useState(false);
@@ -112,7 +112,7 @@ const HistoryPage: React.FC = () => {
                             onChange={handleMultiSelect(setSelectedParticipants)}
                             className="w-full bg-background border border-border rounded-lg p-2 text-text-primary focus:ring-2 focus:ring-accent outline-none"
                         >
-                            {Object.values(Participant).map(p => <option key={p} value={p}>{p}</option>)}
+                            {participants.map(p => <option key={p} value={p}>{p}</option>)}
                         </select>
                     </div>
                     <div className="flex justify-end gap-2">
