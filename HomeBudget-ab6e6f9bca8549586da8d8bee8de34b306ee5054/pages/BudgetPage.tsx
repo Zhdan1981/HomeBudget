@@ -8,30 +8,10 @@ import AddTransactionModal from '../components/AddTransactionModal';
 import { Category } from '../types';
 
 const BudgetPage: React.FC = () => {
-    const { state, dispatch } = useBudget();
+    const { state } = useBudget();
     const [isThemeSwitcherOpen, setThemeSwitcherOpen] = useState(false);
     const [isTransactionModalOpen, setTransactionModalOpen] = useState(false);
     const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
-    const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
-
-    const handleDragStart = (index: number) => {
-        setDraggedIndex(index);
-    };
-
-    const handleDragEnter = (index: number) => {
-        if (draggedIndex === null || draggedIndex === index) return;
-        
-        const newCategories = [...state.categories];
-        const draggedItem = newCategories.splice(draggedIndex, 1)[0];
-        newCategories.splice(index, 0, draggedItem);
-        
-        dispatch({ type: 'REORDER_CATEGORIES', payload: newCategories });
-        setDraggedIndex(index);
-    };
-
-    const handleDragEnd = () => {
-        setDraggedIndex(null);
-    };
 
     const totalBalance = useMemo(() => {
         return state.categories.reduce((sum, cat) => sum + cat.balance, 0);
@@ -70,16 +50,11 @@ const BudgetPage: React.FC = () => {
             </section>
 
             <section className="p-4 space-y-3">
-                {state.categories.map((category, index) => (
+                {state.categories.map(category => (
                     <BudgetCategoryCard 
                         key={category.id} 
                         category={category}
                         onClick={() => handleCardClick(category)}
-                        onDragStart={() => handleDragStart(index)}
-                        onDragEnter={() => handleDragEnter(index)}
-                        onDragEnd={handleDragEnd}
-                        onDragOver={(e) => e.preventDefault()}
-                        isDragging={draggedIndex === index}
                     />
                 ))}
             </section>

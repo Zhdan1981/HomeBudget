@@ -12,8 +12,7 @@ interface AppState {
 type Action =
     | { type: 'ADD_TRANSACTION'; payload: Transaction }
     | { type: 'SET_THEME'; payload: Theme }
-    | { type: 'SET_STATE'; payload: AppState }
-    | { type: 'REORDER_CATEGORIES'; payload: Category[] };
+    | { type: 'SET_STATE'; payload: AppState };
 
 const initialState: AppState = {
     categories: INITIAL_CATEGORIES,
@@ -41,8 +40,6 @@ const budgetReducer = (state: AppState, action: Action): AppState => {
             return { ...state, theme: action.payload };
         case 'SET_STATE':
             return action.payload;
-        case 'REORDER_CATEGORIES':
-            return { ...state, categories: action.payload };
         default:
             return state;
     }

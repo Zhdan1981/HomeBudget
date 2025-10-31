@@ -6,14 +6,9 @@ import { ICONS } from '../constants';
 interface BudgetCategoryCardProps {
     category: Category;
     onClick: () => void;
-    onDragStart: () => void;
-    onDragEnter: () => void;
-    onDragEnd: () => void;
-    onDragOver: (e: React.DragEvent) => void;
-    isDragging: boolean;
 }
 
-const BudgetCategoryCard: React.FC<BudgetCategoryCardProps> = ({ category, onClick, onDragStart, onDragEnter, onDragEnd, onDragOver, isDragging }) => {
+const BudgetCategoryCard: React.FC<BudgetCategoryCardProps> = ({ category, onClick }) => {
     const IconComponent = ICONS[category.icon] || ICONS['Wallet'];
     const formattedBalance = new Intl.NumberFormat('ru-RU', {
         style: 'currency',
@@ -24,12 +19,7 @@ const BudgetCategoryCard: React.FC<BudgetCategoryCardProps> = ({ category, onCli
     return (
         <div 
             onClick={onClick}
-            draggable
-            onDragStart={onDragStart}
-            onDragEnter={onDragEnter}
-            onDragEnd={onDragEnd}
-            onDragOver={onDragOver}
-            className={`bg-card p-4 rounded-xl flex items-center gap-4 shadow-sm hover:shadow-lg transition-all cursor-grab active:cursor-grabbing duration-200 ${isDragging ? 'opacity-50 scale-105' : ''}`}
+            className="bg-card p-4 rounded-xl flex items-center gap-4 shadow-sm hover:shadow-lg transition-shadow cursor-pointer active:scale-95 duration-200"
         >
             <div className={`p-3 rounded-full bg-background ${category.color}`}>
                 <IconComponent className="w-6 h-6" />

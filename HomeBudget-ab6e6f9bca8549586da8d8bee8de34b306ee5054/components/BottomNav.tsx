@@ -1,0 +1,30 @@
+
+import React from 'react';
+import { NavLink } from 'react-router-dom';
+import { Wallet, History, BarChart3 } from 'lucide-react';
+
+const BottomNav: React.FC = () => {
+    const navItems = [
+        { path: '/', label: 'Бюджет', icon: Wallet },
+        { path: '/history', label: 'История', icon: History },
+        { path: '/charts', label: 'Графики', icon: BarChart3 },
+    ];
+
+    const getLinkClass = ({ isActive }: { isActive: boolean }): string => {
+        const baseClasses = 'flex flex-col items-center justify-center gap-1 text-xs transition-colors duration-200';
+        return isActive ? `${baseClasses} text-accent` : `${baseClasses} text-text-secondary hover:text-text-primary`;
+    };
+
+    return (
+        <nav className="fixed bottom-0 left-0 right-0 h-16 bg-card border-t border-border shadow-t-lg flex justify-around items-center z-50">
+            {navItems.map(item => (
+                <NavLink key={item.path} to={item.path} className={getLinkClass}>
+                    <item.icon className="w-6 h-6" />
+                    <span>{item.label}</span>
+                </NavLink>
+            ))}
+        </nav>
+    );
+};
+
+export default BottomNav;
