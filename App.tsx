@@ -6,6 +6,7 @@ import MainLayout from './layouts/MainLayout';
 import BudgetPage from './pages/BudgetPage';
 import HistoryPage from './pages/HistoryPage';
 import ChartsPage from './pages/ChartsPage';
+import CategoryTransactionPage from './components/AddTransactionModal';
 
 const App: React.FC = () => {
     return (
@@ -17,6 +18,7 @@ const App: React.FC = () => {
                         <Route path="history" element={<HistoryPage />} />
                         <Route path="charts" element={<ChartsPage />} />
                     </Route>
+                    <Route path="/category/:id" element={<CategoryTransactionPage />} />
                 </Routes>
             </HashRouter>
         </BudgetProvider>

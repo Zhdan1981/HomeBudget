@@ -25,5 +25,6 @@ export const INITIAL_CATEGORIES: Category[] = [
     { id: "9", name: "Ozon", type: CategoryType.Expenses, balance: 0.00, icon: "ShoppingBag", color: "text-indigo-400" },
     { id: "10", name: "WB", type: CategoryType.Expenses, balance: 0.00, icon: "ShoppingBasket", color: "text-purple-400" },
     { id: "11", name: "КЭШ", type: CategoryType.Personal, balance: 10000.00, icon: "Banknote", color: "text-green-500" },
+    { id: "12", name: "ЖКХ", type: CategoryType.Expenses, balance: 0.00, icon: "Landmark", color: "text-cyan-400" },
     { id: "13", name: "Даша", type: CategoryType.Personal, balance: 0.00, icon: "User", color: "text-violet-400" },
 ];

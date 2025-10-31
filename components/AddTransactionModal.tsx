@@ -1,128 +1,302 @@
-
 import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { Category, TransactionType, Participant } from '../types';
 import { useBudget } from '../hooks/useBudget';
-import { X } from 'lucide-react';
+import { ArrowLeft, Clock, ChevronDown, X, Plus } from 'lucide-react';
 
-interface AddTransactionModalProps {
-    isOpen: boolean;
-    onClose: () => void;
-    category: Category | null;
+interface TransactionFormState {
+    id: number;
+    amountStr: string;
+    note: string;
 }
 
-const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ isOpen, onClose, category }) => {
+const CategoryTransactionPage: React.FC = () => {
+    const { id: categoryId } = useParams<{ id: string }>();
+    const navigate = useNavigate();
     const { state, dispatch } = useBudget();
-    const [amountStr, setAmountStr] = useState('');
+    
+    const category = state.categories.find(c => c.id === categoryId);
+
     const [type, setType] = useState<TransactionType>(TransactionType.Expense);
-    const [participant, setParticipant] = useState<Participant>(Participant.Me);
-    const [note, setNote] = useState('');
-    const [toCategoryId, setToCategoryId] = useState<string>('');
+    const [fromAccountId, setFromAccountId] = useState<string>(categoryId || '');
+    const [toAccountId, setToAccountId] = useState<string>('');
+    
+    const [isEditingBalance, setIsEditingBalance] = useState(false);
+    const [editedBalanceStr, setEditedBalanceStr] = useState('');
+
+    const [transactionForms, setTransactionForms] = useState<TransactionFormState[]>([
+        { id: Date.now(), amountStr: '', note: '' }
+    ]);
 
     useEffect(() => {
-        if (isOpen) {
-            setAmountStr('');
-            setType(TransactionType.Expense);
-            setParticipant(Participant.Me);
-            setNote('');
-            setToCategoryId('');
+        if (categoryId) {
+            setFromAccountId(categoryId);
+            const firstOtherCategory = state.categories.find(c => c.id !== categoryId);
+            if (firstOtherCategory) {
+                setToAccountId(firstOtherCategory.id);
+            } else if (state.categories.length > 0) {
+                 setToAccountId(state.categories[0].id);
+            }
         }
-    }, [isOpen]);
+    }, [categoryId, state.categories]);
+    
+    const addTransactionForm = () => {
+        setTransactionForms([...transactionForms, { id: Date.now(), amountStr: '', note: '' }]);
+    };
 
-    if (!isOpen || !category) return null;
+    const removeTransactionForm = (id: number) => {
+        setTransactionForms(transactionForms.filter(form => form.id !== id));
+    };
+
+    const handleFormChange = (id: number, field: keyof Omit<TransactionFormState, 'id'>, value: string) => {
+        setTransactionForms(forms => 
+            forms.map(form => form.id === id ? { ...form, [field]: value } : form)
+        );
+    };
+
+
+    if (!category) {
+        return (
+            <div className="bg-background text-text-primary min-h-screen flex flex-col items-center justify-center">
+                <p className="text-lg">Категория не найдена.</p>
+                <button onClick={() => navigate(-1)} className="mt-4 px-4 py-2 bg-accent text-accent-text rounded-lg">
+                    Назад
+                </button>
+            </div>
+        );
+    }
+    
+    const participantFromName = Object.values(Participant).find(p => p === category.name) || Participant.Shared;
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        const amounts = amountStr.match(/[\d\.]+/g)?.map(Number) || [0];
-        const totalAmount = amounts.reduce((sum, val) => sum + val, 0);
         
-        if (totalAmount <= 0) return;
-
-        const amountToStore = type === TransactionType.Income ? -totalAmount : totalAmount;
-
-        const newTransaction = {
-            id: new Date().toISOString(),
-            categoryId: category.id,
-            amount: amountToStore,
-            type,
-            participant,
-            note,
+        const baseTransactionInfo = {
+            idPrefix: new Date().toISOString(),
             date: new Date().toISOString(),
-            ...(type === TransactionType.Transfer && { toCategoryId }),
+            participant: participantFromName,
         };
 
-        dispatch({ type: 'ADD_TRANSACTION', payload: newTransaction });
-        onClose();
+        transactionForms.forEach(form => {
+            const amount = parseFloat(form.amountStr.replace(',', '.'));
+            if (isNaN(amount) || amount <= 0) return;
+
+            let newTransaction;
+            const transactionDetails = {
+                id: `${baseTransactionInfo.idPrefix}-${form.id}`,
+                date: baseTransactionInfo.date,
+                participant: baseTransactionInfo.participant,
+                note: form.note,
+            };
+
+            switch (type) {
+                case TransactionType.Expense:
+                    newTransaction = { ...transactionDetails, categoryId: fromAccountId, amount, type };
+                    break;
+                case TransactionType.Income:
+                    newTransaction = { ...transactionDetails, categoryId: fromAccountId, amount: -amount, type };
+                    break;
+                case TransactionType.Transfer:
+                    if (fromAccountId === toAccountId) return;
+                    newTransaction = { ...transactionDetails, categoryId: fromAccountId, toCategoryId: toAccountId, amount, type };
+                    break;
+                default:
+                    return;
+            }
+
+            dispatch({ type: 'ADD_TRANSACTION', payload: newTransaction });
+        });
+        
+        navigate(-1);
     };
 
-    return (
-        <div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-end sm:items-center z-50" onClick={onClose}>
-            <div className="bg-card w-full max-w-lg rounded-t-2xl sm:rounded-2xl p-6" onClick={e => e.stopPropagation()}>
-                <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-bold text-text-primary">Новая транзакция в "{category.name}"</h2>
-                    <button onClick={onClose} className="p-1 rounded-full text-text-secondary hover:bg-border hover:text-text-primary">
-                        <X size={24} />
-                    </button>
-                </div>
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    <div>
-                        <label className="block text-sm font-medium text-text-secondary mb-1">Сумма</label>
-                        <input
-                            type="text"
-                            value={amountStr}
-                            onChange={(e) => setAmountStr(e.target.value)}
-                            placeholder="500 или 100,50 + 200"
-                            className="w-full bg-background border border-border rounded-lg p-3 text-text-primary focus:ring-2 focus:ring-accent focus:border-accent outline-none"
-                            required
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-text-secondary mb-2">Тип</label>
-                        <div className="flex gap-2">
-                            {Object.values(TransactionType).map(t => (
-                                <button type="button" key={t} onClick={() => setType(t)} className={`px-4 py-2 rounded-lg text-sm font-semibold flex-1 ${type === t ? 'bg-accent text-accent-text' : 'bg-background hover:bg-border'}`}>
-                                    {t}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                    {type === TransactionType.Transfer && (
-                        <div>
-                            <label className="block text-sm font-medium text-text-secondary mb-1">Куда</label>
-                            <select value={toCategoryId} onChange={(e) => setToCategoryId(e.target.value)} required className="w-full bg-background border border-border rounded-lg p-3 text-text-primary focus:ring-2 focus:ring-accent focus:border-accent outline-none">
-                                <option value="" disabled>Выберите счет</option>
-                                {state.categories.filter(c => c.id !== category.id).map(c => (
-                                    <option key={c.id} value={c.id}>{c.name}</option>
-                                ))}
-                            </select>
-                        </div>
-                    )}
-                    <div>
-                        <label className="block text-sm font-medium text-text-secondary mb-2">Участник</label>
-                        <div className="flex gap-2 flex-wrap">
-                            {Object.values(Participant).map(p => (
-                                <button type="button" key={p} onClick={() => setParticipant(p)} className={`px-4 py-2 rounded-lg text-sm font-semibold ${participant === p ? 'bg-accent text-accent-text' : 'bg-background hover:bg-border'}`}>
-                                    {p}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-text-secondary mb-1">Заметка</label>
-                        <input
-                            type="text"
-                            value={note}
-                            onChange={(e) => setNote(e.target.value)}
-                            placeholder="Например, продукты на неделю"
-                            className="w-full bg-background border border-border rounded-lg p-3 text-text-primary focus:ring-2 focus:ring-accent focus:border-accent outline-none"
-                        />
-                    </div>
-                    <button type="submit" className="w-full bg-accent text-accent-text font-bold py-3 rounded-lg hover:opacity-90 transition-opacity">
-                        Добавить
-                    </button>
-                </form>
+    const handleBalanceClick = () => {
+        setIsEditingBalance(true);
+        setEditedBalanceStr(category.balance.toString().replace('.', ','));
+    };
+
+    const handleBalanceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setEditedBalanceStr(e.target.value);
+    };
+    
+    const handleBalanceUpdate = () => {
+        const newBalance = parseFloat(editedBalanceStr.replace(',', '.'));
+        if (!isNaN(newBalance) && newBalance !== category.balance) {
+            dispatch({
+                type: 'UPDATE_CATEGORY_BALANCE',
+                payload: { categoryId: category.id, balance: newBalance }
+            });
+        }
+        setIsEditingBalance(false);
+    };
+
+    const handleBalanceKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            handleBalanceUpdate();
+        } else if (e.key === 'Escape') {
+            setIsEditingBalance(false);
+        }
+    };
+    
+    const formattedBalance = new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB' }).format(category.balance);
+
+    const SelectWrapper: React.FC<{ children: React.ReactNode, className?: string }> = ({ children, className }) => (
+        <div className={`relative ${className}`}>
+            {children}
+            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-text-secondary">
+                <ChevronDown size={20} />
             </div>
         </div>
     );
+
+    return (
+      <div className="bg-background text-text-primary min-h-screen font-sans flex flex-col" style={{ backgroundColor: 'var(--background)' }}>
+        <header className="p-4 flex justify-between items-center text-text-primary shrink-0">
+            <button onClick={() => navigate(-1)} className="p-2 -ml-2 rounded-full hover:bg-card">
+                <ArrowLeft size={24} />
+            </button>
+            <div className="flex items-center gap-2">
+                <span className={`w-3 h-3 rounded-full ${category.color.replace('text-','bg-')}`}></span>
+                <span className="font-bold text-lg">{category.name}</span>
+            </div>
+            <button className="p-2 -mr-2 rounded-full hover:bg-card">
+                <Clock size={24} />
+            </button>
+        </header>
+
+        <section className="text-center py-4 shrink-0">
+            {isEditingBalance ? (
+                <input
+                    type="text"
+                    inputMode="decimal"
+                    value={editedBalanceStr}
+                    onChange={handleBalanceChange}
+                    onBlur={handleBalanceUpdate}
+                    onKeyDown={handleBalanceKeyDown}
+                    autoFocus
+                    className="text-5xl font-bold tracking-tight bg-transparent text-center w-full outline-none border-b-2 border-accent text-text-primary"
+                    style={{ caretColor: 'var(--accent)' }}
+                />
+            ) : (
+                <h1 onClick={handleBalanceClick} className="text-5xl font-bold tracking-tight cursor-pointer">
+                    {formattedBalance}
+                </h1>
+            )}
+        </section>
+
+        <main className="flex-grow p-4 overflow-y-auto">
+          <form id="transaction-form" onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-text-secondary mb-1">Тип операции</label>
+              <SelectWrapper>
+                  <select
+                    value={type}
+                    onChange={(e) => setType(e.target.value as TransactionType)}
+                    className="w-full bg-card border border-border rounded-lg p-3 text-text-primary focus:ring-2 focus:ring-accent focus:border-accent outline-none appearance-none pr-10"
+                  >
+                    <option value={TransactionType.Expense}>Расход</option>
+                    <option value={TransactionType.Income}>Доход</option>
+                    <option value={TransactionType.Transfer}>Перевод</option>
+                  </select>
+              </SelectWrapper>
+            </div>
+            
+            <div className="space-y-4">
+                {transactionForms.map((form, index) => (
+                    <div key={form.id} className="bg-card p-4 rounded-lg space-y-4 border border-border relative">
+                        <div className="flex justify-between items-center">
+                           <p className="text-sm font-semibold text-text-secondary">Транзакция {index + 1}</p>
+                           {transactionForms.length > 1 && (
+                               <button type="button" onClick={() => removeTransactionForm(form.id)} className="p-1 -mr-2 -mt-2 rounded-full text-text-secondary hover:bg-background hover:text-text-primary">
+                                   <X size={18} />
+                               </button>
+                           )}
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-text-secondary mb-1">Сумма</label>
+                          <input
+                            type="text" inputMode="decimal" value={form.amountStr}
+                            onChange={(e) => handleFormChange(form.id, 'amountStr', e.target.value)}
+                            placeholder="0,00"
+                            className="w-full bg-background border border-border rounded-lg p-3 text-text-primary focus:ring-2 focus:ring-accent focus:border-accent outline-none"
+                            required
+                          />
+                        </div>
+                        <div>
+                           <label className="block text-sm font-medium text-text-secondary mb-1">Описание (необязательно)</label>
+                           <input
+                            type="text" value={form.note}
+                            onChange={(e) => handleFormChange(form.id, 'note', e.target.value)}
+                            className="w-full bg-background border border-border rounded-lg p-3 text-text-primary focus:ring-2 focus:ring-accent focus:border-accent outline-none"
+                          />
+                        </div>
+                    </div>
+                ))}
+            </div>
+
+            {type === TransactionType.Expense && (
+                 <div>
+                    <label className="block text-sm font-medium text-text-secondary mb-1">Откуда взять (необязательно)</label>
+                    <SelectWrapper>
+                        <select value={fromAccountId} onChange={(e) => setFromAccountId(e.target.value)} className="w-full bg-card border border-border rounded-lg p-3 text-text-primary focus:ring-2 focus:ring-accent focus:border-accent outline-none appearance-none pr-10">
+                            <option key={category.id} value={category.id}>С кошелька "{category.name}"</option>
+                            {state.categories.filter(c => c.id !== categoryId).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                        </select>
+                    </SelectWrapper>
+                </div>
+            )}
+            {type === TransactionType.Income && (
+                 <div>
+                    <label className="block text-sm font-medium text-text-secondary mb-1">Куда зачислить</label>
+                    <SelectWrapper>
+                        <select defaultValue={fromAccountId} onChange={(e) => setFromAccountId(e.target.value)} className="w-full bg-card border border-border rounded-lg p-3 text-text-primary focus:ring-2 focus:ring-accent focus:border-accent outline-none appearance-none pr-10">
+                            {state.categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                        </select>
+                    </SelectWrapper>
+                </div>
+            )}
+            {type === TransactionType.Transfer && (
+                <div className="bg-card p-4 rounded-lg space-y-4 border border-border">
+                    <div>
+                        <label className="block text-sm font-medium text-text-secondary mb-1">Откуда</label>
+                        <SelectWrapper>
+                            <select value={fromAccountId} onChange={(e) => setFromAccountId(e.target.value)} required className="w-full bg-background border border-border rounded-lg p-3 text-text-primary focus:ring-2 focus:ring-accent focus:border-accent outline-none appearance-none pr-10">
+                                {state.categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                            </select>
+                        </SelectWrapper>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-text-secondary mb-1">Куда</label>
+                        <SelectWrapper>
+                            <select value={toAccountId} onChange={(e) => setToAccountId(e.target.value)} required className="w-full bg-background border border-border rounded-lg p-3 text-text-primary focus:ring-2 focus:ring-accent focus:border-accent outline-none appearance-none pr-10">
+                                {state.categories.filter(c => c.id !== fromAccountId).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                            </select>
+                        </SelectWrapper>
+                    </div>
+                </div>
+            )}
+            <button
+                type="button"
+                onClick={addTransactionForm}
+                className="w-full flex items-center justify-center gap-2 border-2 border-dashed border-border rounded-lg py-3 text-text-secondary hover:bg-card hover:border-accent transition-colors"
+            >
+                <Plus size={20} />
+                Добавить еще транзакцию
+            </button>
+          </form>
+        </main>
+
+        <footer className="p-4 grid grid-cols-2 gap-4 shrink-0">
+            <button type="submit" form="transaction-form" className="bg-accent text-accent-text font-bold py-3 rounded-lg hover:opacity-90 transition-opacity">
+                 Добавить {transactionForms.length > 1 ? `(${transactionForms.length})` : ''}
+            </button>
+             <button type="button" onClick={() => navigate(-1)} className="bg-card text-text-primary font-bold py-3 rounded-lg hover:bg-border transition-colors border border-border">
+                Закрыть
+            </button>
+        </footer>
+      </div>
+    );
 };
 
-export default AddTransactionModal;
+export default CategoryTransactionPage;

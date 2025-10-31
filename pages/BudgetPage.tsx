@@ -1,16 +1,16 @@
+
 import React, { useState, useMemo } from 'react';
 import { useBudget } from '../hooks/useBudget';
 import Header from '../components/Header';
 import BudgetCategoryCard from '../components/BudgetCategoryCard';
 import ThemeSwitcher from '../components/ThemeSwitcher';
-import AddTransactionModal from '../components/AddTransactionModal';
 import { Category } from '../types';
+import { useNavigate } from 'react-router-dom';
 
 const BudgetPage: React.FC = () => {
     const { state, dispatch } = useBudget();
+    const navigate = useNavigate();
     const [isThemeSwitcherOpen, setThemeSwitcherOpen] = useState(false);
-    const [isTransactionModalOpen, setTransactionModalOpen] = useState(false);
-    const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
     const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
 
     const handleDragStart = (index: number) => {
@@ -37,8 +37,7 @@ const BudgetPage: React.FC = () => {
     }, [state.categories]);
 
     const handleCardClick = (category: Category) => {
-        setSelectedCategory(category);
-        setTransactionModalOpen(true);
+        navigate(`/category/${category.id}`);
     };
 
     const handleBalanceUpdate = (categoryId: string, newBalance: number) => {
@@ -94,11 +93,6 @@ const BudgetPage: React.FC = () => {
             <ThemeSwitcher 
                 isOpen={isThemeSwitcherOpen} 
                 onClose={() => setThemeSwitcherOpen(false)}
-            />
-            <AddTransactionModal
-                isOpen={isTransactionModalOpen}
-                onClose={() => setTransactionModalOpen(false)}
-                category={selectedCategory}
             />
         </div>
     );
