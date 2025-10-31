@@ -1,4 +1,3 @@
-
 import React, { createContext, useReducer, useEffect, ReactNode, Dispatch } from 'react';
 import { Category, Transaction, Theme } from '../types';
 import { INITIAL_CATEGORIES, THEMES } from '../constants';
@@ -13,7 +12,8 @@ type Action =
     | { type: 'ADD_TRANSACTION'; payload: Transaction }
     | { type: 'SET_THEME'; payload: Theme }
     | { type: 'SET_STATE'; payload: AppState }
-    | { type: 'REORDER_CATEGORIES'; payload: Category[] };
+    | { type: 'REORDER_CATEGORIES'; payload: Category[] }
+    | { type: 'UPDATE_CATEGORY_BALANCE'; payload: { categoryId: string; balance: number } };
 
 const initialState: AppState = {
     categories: INITIAL_CATEGORIES,
@@ -43,6 +43,15 @@ const budgetReducer = (state: AppState, action: Action): AppState => {
             return action.payload;
         case 'REORDER_CATEGORIES':
             return { ...state, categories: action.payload };
+        case 'UPDATE_CATEGORY_BALANCE':
+            return {
+                ...state,
+                categories: state.categories.map(cat =>
+                    cat.id === action.payload.categoryId
+                        ? { ...cat, balance: action.payload.balance }
+                        : cat
+                ),
+            };
         default:
             return state;
     }

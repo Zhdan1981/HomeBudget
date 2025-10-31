@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { useBudget } from '../hooks/useBudget';
 import Header from '../components/Header';
@@ -42,6 +41,13 @@ const BudgetPage: React.FC = () => {
         setTransactionModalOpen(true);
     };
 
+    const handleBalanceUpdate = (categoryId: string, newBalance: number) => {
+        dispatch({
+            type: 'UPDATE_CATEGORY_BALANCE',
+            payload: { categoryId, balance: newBalance },
+        });
+    };
+
     const formattedTotalBalance = new Intl.NumberFormat('ru-RU', {
         style: 'currency',
         currency: 'RUB',
@@ -63,8 +69,8 @@ const BudgetPage: React.FC = () => {
             
             <section className="text-center p-4">
                 <p className="text-sm text-text-secondary">Общий баланс</p>
-                <h1 className="text-5xl font-bold text-accent my-2 tracking-tight">
-                    {formattedTotalBalance.replace('₽', '').trim()} <span className="text-4xl text-accent/80">₽</span>
+                <h1 className="text-4xl font-bold text-accent my-2 tracking-tight">
+                    {formattedTotalBalance.replace('₽', '').trim()} <span className="text-3xl text-accent/80">₽</span>
                 </h1>
                 <p className="text-xs text-text-secondary">Обновлено: {lastUpdated}</p>
             </section>
@@ -75,6 +81,7 @@ const BudgetPage: React.FC = () => {
                         key={category.id} 
                         category={category}
                         onClick={() => handleCardClick(category)}
+                        onUpdateBalance={(newBalance) => handleBalanceUpdate(category.id, newBalance)}
                         onDragStart={() => handleDragStart(index)}
                         onDragEnter={() => handleDragEnter(index)}
                         onDragEnd={handleDragEnd}
