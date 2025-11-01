@@ -56,7 +56,7 @@ const CategoryTransactionPage: React.FC = () => {
         return (
             <div className="bg-background text-text-primary min-h-screen flex flex-col items-center justify-center">
                 <p className="text-lg">Категория не найдена.</p>
-                <button onClick={() => navigate(-1)} className="mt-4 px-4 py-2 bg-accent text-accent-text rounded-lg">
+                <button onClick={() => navigate('/')} className="mt-4 px-4 py-2 bg-accent text-accent-text rounded-lg">
                     Назад
                 </button>
             </div>
@@ -153,7 +153,7 @@ const CategoryTransactionPage: React.FC = () => {
     return (
       <div className="bg-background text-text-primary min-h-screen font-sans flex flex-col" style={{ backgroundColor: 'var(--background)' }}>
         <header className="p-4 flex justify-between items-center text-text-primary shrink-0">
-            <button onClick={() => navigate(-1)} className="p-2 -ml-2 rounded-full hover:bg-card">
+            <button onClick={() => navigate('/')} className="p-2 -ml-2 rounded-full hover:bg-card">
                 <ArrowLeft size={24} />
             </button>
             <div className="flex items-center gap-2">
@@ -267,7 +267,7 @@ const CategoryTransactionPage: React.FC = () => {
             <button type="submit" form="transaction-form" className="bg-accent text-accent-text font-bold py-3 rounded-lg hover:opacity-90 transition-opacity">
                  Добавить {transactionForms.length > 1 ? `(${transactionForms.length})` : ''}
             </button>
-             <button type="button" onClick={() => navigate(-1)} className="bg-card text-text-primary font-bold py-3 rounded-lg hover:bg-border transition-colors border border-border">
+             <button type="button" onClick={() => navigate('/')} className="bg-card text-text-primary font-bold py-3 rounded-lg hover:bg-border transition-colors border border-border">
                 Закрыть
             </button>
         </footer>

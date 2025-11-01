@@ -14,7 +14,11 @@ const SubPageHeader: React.FC<SubPageHeaderProps> = ({ title, onBack }) => {
         if (onBack) {
             onBack();
         } else {
-            navigate(-1);
+            // Navigate to the main page instead of just going back in history.
+            // This ensures a consistent UX where "back" from a sub-page
+            // always returns to the main dashboard and prevents exiting the app
+            // if there's no previous page in the history stack.
+            navigate('/');
         }
     };
 
