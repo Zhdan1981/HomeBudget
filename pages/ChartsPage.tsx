@@ -1,7 +1,8 @@
+
 import React, { useMemo, useState } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, LineChart, Line, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { useBudget } from '../hooks/useBudget';
-import { TransactionType } from '../types';
+import { TransactionType, CategoryType } from '../types';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#AF19FF', '#FF1943', '#19FFD1'];
 
@@ -51,23 +52,39 @@ const ChartsPage: React.FC = () => {
     }, [transactions, timeRange]);
 
     const financialOverview = useMemo(() => {
+        const getCategory = (id: string) => allCategories.find(c => c.id === id);
+
         const income = filteredTransactions
             .filter(tx => tx.type === TransactionType.Income)
             .reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
 
         const expenses = filteredTransactions
-            .filter(tx => tx.type === TransactionType.Expense)
+            .filter(tx => {
+                if (tx.type === TransactionType.Transfer) {
+                    const toCategory = getCategory(tx.toCategoryId!);
+                    return toCategory && toCategory.type === CategoryType.Expenses;
+                }
+                return false;
+            })
             .reduce((sum, tx) => sum + tx.amount, 0);
 
         return { income, expenses, net: income - expenses };
-    }, [filteredTransactions]);
+    }, [filteredTransactions, allCategories]);
 
     const expenseData = useMemo(() => {
+        const getCategory = (id: string) => allCategories.find(c => c.id === id);
         const expensesByCategory: { [key: string]: number } = {};
+        
         filteredTransactions
-            .filter(tx => tx.type === TransactionType.Expense)
+            .filter(tx => {
+                if (tx.type === TransactionType.Transfer) {
+                    const toCategory = getCategory(tx.toCategoryId!);
+                    return toCategory && toCategory.type === CategoryType.Expenses;
+                }
+                return false;
+            })
             .forEach(tx => {
-                const categoryName = allCategories.find(c => c.id === tx.categoryId)?.name || 'Прочее';
+                const categoryName = getCategory(tx.toCategoryId!)?.name || 'Прочее';
                 if (!expensesByCategory[categoryName]) {
                     expensesByCategory[categoryName] = 0;
                 }

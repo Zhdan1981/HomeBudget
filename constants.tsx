@@ -1,6 +1,6 @@
 import { Category, CategoryType, Theme } from './types';
 // fix: Corrected icon import from UtensilsCross to UtensilsCrossed and updated references.
-import { User, Users, Wallet, Fuel, UtensilsCrossed, Plane, Warehouse, ShoppingCart, Banknote, Landmark, Package, Store, ShoppingBag, ShoppingBasket } from 'lucide-react';
+import { User, Users, Wallet, Fuel, UtensilsCrossed, Plane, Warehouse, ShoppingCart, Banknote, Landmark, Package, Store, ShoppingBag, ShoppingBasket, Shrimp } from 'lucide-react';
 import React from 'react';
 
 export const THEMES: Theme[] = [
@@ -9,7 +9,7 @@ export const THEMES: Theme[] = [
 ];
 
 export const ICONS: { [key: string]: React.FC<React.SVGProps<SVGSVGElement>> } = {
-    User, Users, Wallet, Fuel, UtensilsCrossed, Plane, Warehouse, ShoppingCart, Banknote, Landmark, Package, Store, ShoppingBag, ShoppingBasket
+    User, Users, Wallet, Fuel, UtensilsCrossed, Plane, Warehouse, ShoppingCart, Banknote, Landmark, Package, Store, ShoppingBag, ShoppingBasket, Shrimp
 };
 
 export const CATEGORY_COLORS = [
@@ -25,7 +25,7 @@ export const INITIAL_CATEGORIES: Category[] = [
     { id: "1", name: "Ждан", type: CategoryType.Personal, balance: 63964.00, icon: "User", color: "text-sky-400" },
     { id: "2", name: "Надя", type: CategoryType.Personal, balance: 5551.37, icon: "User", color: "text-pink-400" },
     { id: "3", name: "Андрей", type: CategoryType.Personal, balance: 0.00, icon: "User", color: "text-amber-400" },
-    { id: "4", name: "Суши", type: CategoryType.Expenses, balance: 0.00, icon: "UtensilsCrossed", color: "text-emerald-400" },
+    { id: "4", name: "Суши", type: CategoryType.Expenses, balance: 0.00, icon: "Shrimp", color: "text-emerald-400" },
     { id: "5", name: "Отпуск", type: CategoryType.Shared, balance: 546153.00, icon: "Plane", color: "text-blue-400" },
     { id: "6", name: "Гараж", type: CategoryType.Expenses, balance: 6429.00, icon: "Warehouse", color: "text-orange-400" },
     { id: "7", name: "Бензин", type: CategoryType.Expenses, balance: 0.00, icon: "Fuel", color: "text-red-400" },

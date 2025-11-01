@@ -1,7 +1,8 @@
 
+
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useBudget } from '../hooks/useBudget';
-import { Transaction, TransactionType } from '../types';
+import { Transaction, TransactionType, CategoryType } from '../types';
 import { Filter, ArrowDownUp, X, Check } from 'lucide-react';
 import { ICONS } from '../constants';
 
@@ -100,12 +101,17 @@ const HistoryPage: React.FC = () => {
         });
 
         if (sortOption === 'date-desc' || sortOption === 'date-asc') {
-            return filtered.reduce((acc, tx) => {
+            // FIX: Explicitly type the accumulator in the reduce function to prevent type inference issues.
+            // This ensures the return value is correctly typed as Record<string, Transaction[]>,
+            // resolving downstream TypeScript errors where the value was being inferred as `unknown`.
+            return filtered.reduce((acc: Record<string, Transaction[]>, tx) => {
                 const dateKey = tx.date.split('T')[0];
-                if (!acc[dateKey]) acc[dateKey] = [];
+                if (!acc[dateKey]) {
+                    acc[dateKey] = [];
+                }
                 acc[dateKey].push(tx);
                 return acc;
-            }, {} as Record<string, Transaction[]>);
+            }, {});
         }
         
         return filtered;
@@ -118,8 +124,9 @@ const HistoryPage: React.FC = () => {
         setSelectedParticipants([]);
     };
     
+    // FIX: Explicitly type the `option` parameter as `HTMLOptionElement` to resolve a TypeScript error where it was being inferred as `unknown`.
     const handleMultiSelect = (setter: React.Dispatch<React.SetStateAction<string[]>>) => (e: React.ChangeEvent<HTMLSelectElement>) => {
-        setter(Array.from(e.target.selectedOptions, option => option.value));
+        setter(Array.from(e.target.selectedOptions, (option: HTMLOptionElement) => option.value));
     };
 
     const formatDateGroup = (dateString: string) => {
@@ -173,9 +180,19 @@ const HistoryPage: React.FC = () => {
     
     const calculateDailyTotal = (dailyTransactions: Transaction[]): number => {
       return dailyTransactions.reduce((total, tx) => {
-        if (tx.type === TransactionType.Income) return total + tx.amount;
-        if (tx.type === TransactionType.Expense) return total - tx.amount;
-        return total; // Transfers don't affect total
+        if (tx.type === TransactionType.Income) {
+            return total - tx.amount; // amount is negative, so this adds to the total
+        }
+        
+        if (tx.type === TransactionType.Transfer) {
+            const toCategory = getCategory(tx.toCategoryId!);
+            // An expense is a transfer to an expense category
+            if (toCategory && toCategory.type === CategoryType.Expenses) {
+                return total - tx.amount;
+            }
+        }
+        // Regular transfers between non-expense accounts don't affect the total.
+        return total; 
       }, 0);
     };
 
@@ -273,7 +290,7 @@ const HistoryPage: React.FC = () => {
                     Object.keys(processedTransactions).length > 0 ? (
                         Object.entries(processedTransactions).map(([date, txs]) => {
                             const dailyTotal = calculateDailyTotal(txs);
-                            const totalColor = dailyTotal > 0 ? 'text-green-500' : 'text-red-500';
+                            const totalColor = dailyTotal > 0 ? 'text-green-500' : dailyTotal < 0 ? 'text-red-500' : 'text-text-secondary';
                             return (
                                 <div key={date} className="mb-6">
                                     <div className="sticky top-[73px] bg-background z-10 py-2 flex justify-between items-center">

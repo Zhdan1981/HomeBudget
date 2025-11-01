@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Category, TransactionType } from '../types';
+import { Category, TransactionType, CategoryType } from '../types';
 import { useBudget } from '../hooks/useBudget';
 import { ArrowLeft, ChevronDown, X, Plus } from 'lucide-react';
 
@@ -18,9 +18,9 @@ const CategoryTransactionPage: React.FC = () => {
     const category = state.categories.find(c => c.id === categoryId);
 
     const [type, setType] = useState<TransactionType>(TransactionType.Expense);
-    // State specifically for transfers
-    const [transferFromId, setTransferFromId] = useState<string>(categoryId || '');
+    const [transferFromId, setTransferFromId] = useState<string>('');
     const [transferToId, setTransferToId] = useState<string>('');
+    const [incomeToId, setIncomeToId] = useState<string>('');
     
     const [isEditingBalance, setIsEditingBalance] = useState(false);
     const [editedBalanceStr, setEditedBalanceStr] = useState('');
@@ -30,17 +30,19 @@ const CategoryTransactionPage: React.FC = () => {
     ]);
 
     useEffect(() => {
-        // This effect now correctly sets up default accounts for transfers
-        if (categoryId) {
-            setTransferFromId(categoryId);
+        if (category) {
             const firstOtherCategory = state.categories.find(c => c.id !== categoryId);
-            if (firstOtherCategory) {
-                setTransferToId(firstOtherCategory.id);
-            } else if (state.categories.length > 0) {
-                 setTransferToId(state.categories[0].id);
+            setTransferToId(firstOtherCategory?.id || (state.categories.length > 0 ? state.categories[0].id : ''));
+            setIncomeToId(category.id);
+            
+            if (category.type === CategoryType.Expenses) {
+                const firstWallet = state.categories.find(c => c.type !== CategoryType.Expenses);
+                setTransferFromId(firstWallet?.id || '');
+            } else {
+                setTransferFromId(category.id);
             }
         }
-    }, [categoryId, state.categories]);
+    }, [category, categoryId, state.categories]);
     
     const addTransactionForm = () => {
         setTransactionForms([...transactionForms, { id: Date.now(), amountStr: '', note: '' }]);
@@ -92,12 +94,18 @@ const CategoryTransactionPage: React.FC = () => {
 
             switch (type) {
                 case TransactionType.Expense:
-                    // Expense is always recorded against the current category.
-                    newTransaction = { ...transactionDetails, categoryId: category.id, amount, type };
+                    if (!transferFromId || !category.id) return;
+                    // Treat expense as a transfer from a source account to an expense category
+                    newTransaction = { 
+                        ...transactionDetails, 
+                        categoryId: transferFromId, 
+                        toCategoryId: category.id, 
+                        amount, 
+                        type: TransactionType.Transfer 
+                    };
                     break;
                 case TransactionType.Income:
-                    // Income is always recorded for the current category. Amount is negative for reducer logic.
-                    newTransaction = { ...transactionDetails, categoryId: category.id, amount: -amount, type };
+                    newTransaction = { ...transactionDetails, categoryId: incomeToId, amount: -amount, type };
                     break;
                 case TransactionType.Transfer:
                     if (transferFromId === transferToId) return;
@@ -107,7 +115,9 @@ const CategoryTransactionPage: React.FC = () => {
                     return;
             }
 
-            dispatch({ type: 'ADD_TRANSACTION', payload: newTransaction });
+            if(newTransaction) {
+              dispatch({ type: 'ADD_TRANSACTION', payload: newTransaction });
+            }
         });
         
         navigate(-1);
@@ -250,7 +260,7 @@ const CategoryTransactionPage: React.FC = () => {
                         <label className="block text-sm font-medium text-text-secondary mb-1">Куда</label>
                         <SelectWrapper>
                             <select value={transferToId} onChange={(e) => setTransferToId(e.target.value)} required className="w-full bg-background border border-border rounded-lg p-3 text-text-primary focus:ring-2 focus:ring-accent focus:border-accent outline-none appearance-none pr-10">
-                                {state.categories.filter(c => c.id !== transferFromId).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                {state.categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                             </select>
                         </SelectWrapper>
                     </div>

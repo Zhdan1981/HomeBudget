@@ -1,5 +1,7 @@
+
+
 import React, { createContext, useReducer, useEffect, ReactNode, Dispatch, useContext, useCallback } from 'react';
-import { Category, Transaction, Theme } from '../types';
+import { Category, Transaction, Theme, CategoryType } from '../types';
 import { INITIAL_CATEGORIES, INITIAL_PARTICIPANTS } from '../constants';
 import { AuthContext } from './AuthContext';
 import { getUserData, saveUserData } from '../services/api';
@@ -11,6 +13,7 @@ interface AppState {
     theme: Theme;
     participants: string[];
     isDataLoaded: boolean;
+    bottomNavOpacity: number;
 }
 
 type Action =
@@ -26,7 +29,8 @@ type Action =
     | { type: 'UPDATE_PARTICIPANT'; payload: { oldName: string; newName: string } }
     | { type: 'DELETE_PARTICIPANT'; payload: string }
     | { type: 'RESET_STATE' }
-    | { type: 'LOGOUT_USER' };
+    | { type: 'LOGOUT_USER' }
+    | { type: 'SET_BOTTOM_NAV_OPACITY'; payload: number };
 
 const initialState: AppState = {
     categories: [],
@@ -34,6 +38,7 @@ const initialState: AppState = {
     theme: 'Полночь',
     participants: [],
     isDataLoaded: false,
+    bottomNavOpacity: 0.8,
 };
 
 const getInitialUserState = (): Omit<AppState, 'isDataLoaded'> => ({
@@ -41,6 +46,7 @@ const getInitialUserState = (): Omit<AppState, 'isDataLoaded'> => ({
     transactions: [],
     theme: 'Полночь',
     participants: INITIAL_PARTICIPANTS,
+    bottomNavOpacity: 0.8,
 });
 
 const budgetReducer = (state: AppState, action: Action): AppState => {
@@ -49,9 +55,12 @@ const budgetReducer = (state: AppState, action: Action): AppState => {
             const transaction = action.payload;
             const newTransactions = [...state.transactions, transaction];
             const newCategories = state.categories.map(cat => {
+                // For transfers/expenses, this is the source account. Balance decreases.
+                // For income, amount is negative, so balance increases (balance - (-amount)).
                 if (cat.id === transaction.categoryId) {
                     return { ...cat, balance: cat.balance - transaction.amount };
                 }
+                // For transfers (including expenses), this is the destination account. Balance increases.
                 if (transaction.type === 'Перевод' && cat.id === transaction.toCategoryId) {
                     return { ...cat, balance: cat.balance + transaction.amount };
                 }
@@ -61,8 +70,15 @@ const budgetReducer = (state: AppState, action: Action): AppState => {
         }
         case 'SET_THEME':
             return { ...state, theme: action.payload };
-        case 'SET_USER_DATA':
-            return { ...action.payload, isDataLoaded: true };
+        case 'SET_USER_DATA': {
+            const defaultUserData = getInitialUserState();
+            return {
+                ...state, // Preserve existing state properties like isDataLoaded
+                ...defaultUserData, // Ensure all default fields are present
+                ...action.payload, // Override with data from Firebase
+                isDataLoaded: true,
+            };
+        }
         case 'REORDER_CATEGORIES':
             return { ...state, categories: action.payload };
         case 'UPDATE_CATEGORY_BALANCE':
@@ -131,6 +147,8 @@ const budgetReducer = (state: AppState, action: Action): AppState => {
             };
         case 'LOGOUT_USER':
             return initialState;
+        case 'SET_BOTTOM_NAV_OPACITY':
+            return { ...state, bottomNavOpacity: action.payload };
         default:
             return state;
     }

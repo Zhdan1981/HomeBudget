@@ -13,6 +13,7 @@ const getInitialUserState = () => ({
     transactions: [],
     theme: 'Полночь',
     participants: INITIAL_PARTICIPANTS,
+    bottomNavOpacity: 0.8,
 });
 
 

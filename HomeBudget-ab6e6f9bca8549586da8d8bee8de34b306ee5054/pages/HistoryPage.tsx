@@ -47,8 +47,9 @@ const HistoryPage: React.FC = () => {
         setSelectedParticipants([]);
     };
     
+    // FIX: Explicitly type the `option` parameter as `HTMLOptionElement` to resolve a TypeScript error where it was being inferred as `unknown`.
     const handleMultiSelect = (setter: React.Dispatch<React.SetStateAction<string[]>>) => (e: React.ChangeEvent<HTMLSelectElement>) => {
-        const options = Array.from(e.target.selectedOptions, option => option.value);
+        const options = Array.from(e.target.selectedOptions, (option: HTMLOptionElement) => option.value);
         setter(options);
     };
 

@@ -1,8 +1,10 @@
+
+
 import React, { useState, useMemo } from 'react';
 import { useBudget } from '../hooks/useBudget';
 import Header from '../components/Header';
 import BudgetCategoryCard from '../components/BudgetCategoryCard';
-import { Category } from '../types';
+import { Category, CategoryType } from '../types';
 import { useNavigate } from 'react-router-dom';
 
 const BudgetPage: React.FC = () => {
@@ -30,7 +32,9 @@ const BudgetPage: React.FC = () => {
     };
 
     const totalBalance = useMemo(() => {
-        return state.categories.reduce((sum, cat) => sum + cat.balance, 0);
+        return state.categories
+            .filter(cat => cat.type === CategoryType.Personal || cat.type === CategoryType.Shared)
+            .reduce((sum, cat) => sum + cat.balance, 0);
     }, [state.categories]);
 
     const handleCardClick = (category: Category) => {

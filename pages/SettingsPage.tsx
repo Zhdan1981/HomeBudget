@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useBudget } from '../hooks/useBudget';
 import { CategoryType } from '../types';
 import { ICONS } from '../constants';
-import { Plus, Pencil, Trash2, ChevronDown, Download, Upload, RefreshCw, SunMoon, ChevronRight, User, LogOut } from 'lucide-react';
+import { Plus, Pencil, Trash2, ChevronDown, Download, Upload, RefreshCw, SunMoon, ChevronRight, User, LogOut, Droplets } from 'lucide-react';
 import SubPageHeader from '../components/SubPageHeader';
 import ThemeSwitcher from '../components/ThemeSwitcher';
 import { AuthContext } from '../context/AuthContext';
@@ -189,7 +189,7 @@ const SettingsPage: React.FC = () => {
                         <div className="bg-background rounded-md overflow-hidden border border-border">
                             <button
                                 onClick={() => setThemeSwitcherOpen(true)}
-                                className="flex items-center p-3 gap-3 w-full text-left hover:bg-border transition-colors"
+                                className="flex items-center p-3 gap-3 w-full text-left hover:bg-border transition-colors border-b border-border"
                             >
                                 <div className={`p-1.5 rounded-full bg-accent/20 text-accent`}>
                                     <SunMoon size={18} />
@@ -198,6 +198,28 @@ const SettingsPage: React.FC = () => {
                                 <span className="text-sm text-text-secondary mr-2">{state.theme}</span>
                                 <ChevronRight size={18} className="text-text-secondary" />
                             </button>
+                            <div className="flex items-center justify-between p-3 gap-3 w-full text-left">
+                                <div className="flex items-center gap-3">
+                                    <div className={`p-1.5 rounded-full bg-indigo-500/20 text-indigo-500`}>
+                                        <Droplets size={18} />
+                                    </div>
+                                    <span className="font-medium text-sm">Прозрачность панели</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <input
+                                        type="range"
+                                        min="0.1"
+                                        max="1"
+                                        step="0.05"
+                                        value={state.bottomNavOpacity}
+                                        onChange={(e) => dispatch({ type: 'SET_BOTTOM_NAV_OPACITY', payload: parseFloat(e.target.value) })}
+                                        className="w-24 h-2 bg-border rounded-lg appearance-none cursor-pointer accent-accent"
+                                    />
+                                    <span className="text-xs font-mono text-text-secondary w-8 text-right">
+                                        {Math.round(state.bottomNavOpacity * 100)}%
+                                    </span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </AccordionItem>
