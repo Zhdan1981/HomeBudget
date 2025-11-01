@@ -1,6 +1,4 @@
-
-
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useRef, useLayoutEffect } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, LineChart, Line, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { useBudget } from '../hooks/useBudget';
 import { TransactionType } from '../types';
@@ -53,6 +51,14 @@ const ChartsPage: React.FC = () => {
     const { transactions, categories: allCategories } = state;
     const [timeRange, setTimeRange] = useState<TimeRange>('month');
     const [inactiveCategories, setInactiveCategories] = useState<string[]>([]);
+    const headerRef = useRef<HTMLDivElement>(null);
+    const [headerBottom, setHeaderBottom] = useState(0);
+
+    useLayoutEffect(() => {
+        if (headerRef.current) {
+            setHeaderBottom(headerRef.current.getBoundingClientRect().bottom);
+        }
+    }, []);
 
     const filteredTransactions = useMemo(() => {
         const now = new Date();
@@ -227,11 +233,21 @@ const ChartsPage: React.FC = () => {
 
     return (
         <div className="max-w-md mx-auto text-text-primary">
-            <header className="p-4 text-center border-b border-border">
-                <h1 className="text-xl font-bold">Графики</h1>
-            </header>
+            <div 
+                ref={headerRef}
+                className="fixed inset-x-4 max-w-md mx-auto border shadow-lg rounded-2xl backdrop-blur-lg z-10"
+                style={{ 
+                    backgroundColor: `rgba(var(--card-rgb), 0.35)`,
+                    borderColor: `rgba(var(--border-rgb), 0.3)`,
+                    top: 'env(safe-area-inset-top)'
+                }}
+            >
+                <div className="p-4 text-center">
+                    <h1 className="text-xl font-bold">Графики</h1>
+                </div>
+            </div>
             
-            <div className="p-4">
+            <div className="p-4" style={{ paddingTop: headerBottom ? `${headerBottom + 16}px` : '6rem' }}>
                 <div className="flex justify-center bg-card p-1 rounded-lg mb-6 shadow-sm">
                     {TIME_RANGE_OPTIONS.map(({ key, label }) => (
                         <button

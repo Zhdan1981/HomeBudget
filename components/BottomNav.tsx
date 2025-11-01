@@ -16,7 +16,7 @@ const BottomNav: React.FC = () => {
 
     return (
         <nav 
-            className="fixed inset-x-0 max-w-sm mx-auto h-16 border shadow-lg flex justify-around items-center z-50 rounded-2xl backdrop-blur-lg"
+            className="fixed inset-x-4 max-w-md mx-auto h-16 border shadow-lg flex justify-around items-center z-50 rounded-2xl backdrop-blur-lg"
             style={{ 
                 backgroundColor: `rgba(var(--card-rgb), 0.35)`,
                 borderColor: `rgba(var(--border-rgb), 0.3)`,
