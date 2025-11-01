@@ -11,7 +11,9 @@ export default defineConfig(({ mode }) => {
       (prev, [key, val]) => {
         return {
           ...prev,
-          [`process.env.${key}`]: `"${val}"`,
+          // Use JSON.stringify to correctly handle all values, including complex strings
+          // with special characters, which is crucial for platforms like Vercel.
+          [`process.env.${key}`]: JSON.stringify(val),
         }
       },
       {},
