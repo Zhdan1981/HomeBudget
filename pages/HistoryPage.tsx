@@ -1,9 +1,7 @@
-
-
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useBudget } from '../hooks/useBudget';
-import { Transaction, TransactionType, CategoryType } from '../types';
-import { Filter, ArrowDownUp, X, Check } from 'lucide-react';
+import { Transaction, TransactionType } from '../types';
+import { Filter, ArrowDownUp, X, Check, Trash2 } from 'lucide-react';
 import { ICONS } from '../constants';
 
 type SortOption = 'date-desc' | 'date-asc' | 'category-asc' | 'category-desc' | 'amount-desc' | 'amount-asc';
@@ -18,18 +16,18 @@ const SORT_OPTIONS: { key: SortOption; label: string }[] = [
 ];
 
 const HistoryPage: React.FC = () => {
-    const { state } = useBudget();
-    const { transactions, categories, participants } = state;
+    const { state, dispatch } = useBudget();
+    const { transactions, categories } = state;
 
     // State for UI
     const [showFilters, setShowFilters] = useState(false);
     const [showSortOptions, setShowSortOptions] = useState(false);
+    const [txToDelete, setTxToDelete] = useState<Transaction | null>(null);
     
     // State for filtering
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
     const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
-    const [selectedParticipants, setSelectedParticipants] = useState<string[]>([]);
     
     // State for sorting
     const [sortOption, setSortOption] = useState<SortOption>('date-desc');
@@ -64,12 +62,12 @@ const HistoryPage: React.FC = () => {
     const activeFilterCount =
         (startDate ? 1 : 0) +
         (endDate ? 1 : 0) +
-        selectedCategories.length +
-        selectedParticipants.length;
+        selectedCategories.length;
 
     const getCategory = (id: string) => categories.find(c => c.id === id);
 
-    const processedTransactions = useMemo(() => {
+    // FIX: Explicitly typed `processedTransactions` to resolve a TypeScript type inference issue with `useMemo` returning a union type.
+    const processedTransactions: Transaction[] | Record<string, Transaction[]> = useMemo(() => {
         let filtered = [...transactions];
 
         // Filtering logic
@@ -81,9 +79,6 @@ const HistoryPage: React.FC = () => {
         }
         if (selectedCategories.length > 0) {
             filtered = filtered.filter(tx => selectedCategories.includes(tx.categoryId) || (tx.toCategoryId && selectedCategories.includes(tx.toCategoryId)));
-        }
-        if (selectedParticipants.length > 0) {
-            filtered = filtered.filter(tx => selectedParticipants.includes(tx.participant));
         }
 
         // Sorting logic
@@ -101,10 +96,9 @@ const HistoryPage: React.FC = () => {
         });
 
         if (sortOption === 'date-desc' || sortOption === 'date-asc') {
-            // FIX: Explicitly type the accumulator in the reduce function to prevent type inference issues.
-            // This ensures the return value is correctly typed as Record<string, Transaction[]>,
-            // resolving downstream TypeScript errors where the value was being inferred as `unknown`.
-            return filtered.reduce((acc: Record<string, Transaction[]>, tx) => {
+            // FIX: Correctly type the `reduce` function's accumulator to resolve type inference issues.
+            // By explicitly setting the generic type for `reduce`, we ensure the correct return type for `useMemo`.
+            return filtered.reduce<Record<string, Transaction[]>>((acc, tx) => {
                 const dateKey = tx.date.split('T')[0];
                 if (!acc[dateKey]) {
                     acc[dateKey] = [];
@@ -115,13 +109,12 @@ const HistoryPage: React.FC = () => {
         }
         
         return filtered;
-    }, [transactions, startDate, endDate, selectedCategories, selectedParticipants, sortOption, categories]);
+    }, [transactions, startDate, endDate, selectedCategories, sortOption, categories]);
 
     const handleResetFilters = () => {
         setStartDate('');
         setEndDate('');
         setSelectedCategories([]);
-        setSelectedParticipants([]);
     };
     
     // FIX: Explicitly type the `option` parameter as `HTMLOptionElement` to resolve a TypeScript error where it was being inferred as `unknown`.
@@ -141,6 +134,21 @@ const HistoryPage: React.FC = () => {
         return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
     };
 
+    const handleDeleteClick = (tx: Transaction) => {
+        setTxToDelete(tx);
+    };
+
+    const confirmDelete = () => {
+        if (txToDelete) {
+            dispatch({ type: 'DELETE_TRANSACTION', payload: txToDelete.id });
+            setTxToDelete(null);
+        }
+    };
+    
+    const cancelDelete = () => {
+        setTxToDelete(null);
+    };
+
     const renderTransactionItem = (tx: Transaction) => {
         const fromCategory = getCategory(tx.categoryId);
         const toCategory = tx.toCategoryId ? getCategory(tx.toCategoryId) : null;
@@ -154,26 +162,33 @@ const HistoryPage: React.FC = () => {
         
         const amountColor = tx.type === TransactionType.Income ? 'text-green-500' : 
                             tx.type === TransactionType.Transfer ? 'text-blue-500' : 'text-red-500';
-        const sign = tx.type === TransactionType.Income ? '+' : '-';
+        const sign = tx.type === TransactionType.Income ? '+' : (tx.type === TransactionType.Expense ? '-' : '');
         const formattedAmount = new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB' }).format(Math.abs(tx.amount));
 
         return (
-            <li key={tx.id} className="bg-card p-3 rounded-lg flex items-center gap-4">
+            <li key={tx.id} className="bg-card p-3 rounded-lg flex items-center gap-3">
                 <div className={`p-2 rounded-full ${color.replace('text-', 'bg-')}/20 ${color}`}>
                     <Icon className="w-6 h-6" />
                 </div>
                 <div className="flex-grow">
                     <p className="font-semibold text-text-primary">{title}</p>
-                    <p className="text-sm text-text-secondary">{tx.note || tx.participant}</p>
+                    <p className="text-sm text-text-secondary">{tx.note}</p>
                 </div>
                 <div className="text-right">
                     <p className={`${amountColor} font-bold text-lg whitespace-nowrap`}>
-                        {tx.type !== TransactionType.Transfer && sign} {formattedAmount}
+                        {sign} {formattedAmount}
                     </p>
                      <p className="text-xs text-text-secondary mt-1">
                         {new Date(tx.date).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
                     </p>
                 </div>
+                <button 
+                    onClick={() => handleDeleteClick(tx)}
+                    className="p-2 -mr-1 rounded-full text-text-secondary opacity-50 hover:opacity-100 hover:text-red-500 hover:bg-red-500/10 focus:opacity-100 focus:text-red-500 transition-all duration-200"
+                    aria-label="Удалить транзакцию"
+                >
+                    <Trash2 size={18} />
+                </button>
             </li>
         );
     };
@@ -183,13 +198,8 @@ const HistoryPage: React.FC = () => {
         if (tx.type === TransactionType.Income) {
             return total - tx.amount; // amount is negative, so this adds to the total
         }
-        
-        if (tx.type === TransactionType.Transfer) {
-            const toCategory = getCategory(tx.toCategoryId!);
-            // An expense is a transfer to an expense category
-            if (toCategory && toCategory.type === CategoryType.Expenses) {
-                return total - tx.amount;
-            }
+        if (tx.type === TransactionType.Expense) {
+            return total - tx.amount;
         }
         // Regular transfers between non-expense accounts don't affect the total.
         return total; 
@@ -199,7 +209,10 @@ const HistoryPage: React.FC = () => {
     return (
         <div className="max-w-md mx-auto">
             <header className="p-4 flex justify-between items-center sticky top-0 bg-background z-20 border-b border-border">
-                <h1 className="text-2xl font-bold text-text-primary">История</h1>
+                <div className="w-24"></div>
+                <h1 className="text-xl font-bold text-text-primary absolute left-1/2 -translate-x-1/2">
+                    История
+                </h1>
                 <div className="flex items-center gap-2">
                     <div className="relative" ref={sortRef}>
                         <button 
@@ -262,12 +275,6 @@ const HistoryPage: React.FC = () => {
                                             {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                                         </select>
                                     </div>
-                                     <div>
-                                        <label className="block text-sm font-medium text-text-secondary mb-1">Участники</label>
-                                        <select multiple value={selectedParticipants} onChange={handleMultiSelect(setSelectedParticipants)} className="w-full bg-background border border-border rounded-lg p-2 text-text-primary focus:ring-2 focus:ring-accent outline-none h-24">
-                                            {participants.map(p => <option key={p} value={p}>{p}</option>)}
-                                        </select>
-                                    </div>
                                 </div>
                                 <div className="flex justify-end gap-2 p-3 bg-background/50 rounded-b-lg border-t border-border">
                                      <button onClick={handleResetFilters} className="px-4 py-1.5 rounded-md text-sm font-semibold bg-background hover:bg-border border border-border">Сбросить</button>
@@ -309,6 +316,32 @@ const HistoryPage: React.FC = () => {
                     )
                 )}
             </main>
+
+            {txToDelete && (
+                <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 animate-fade-in" onClick={cancelDelete}>
+                    <div className="bg-card rounded-xl p-6 w-11/12 max-w-sm text-center shadow-2xl animate-scale-in" onClick={e => e.stopPropagation()}>
+                        <h3 className="text-lg font-bold text-text-primary mb-2">Подтвердите удаление</h3>
+                        <p className="text-text-secondary mb-6">
+                            Вы уверены, что хотите безвозвратно удалить эту транзакцию?
+                        </p>
+                        
+                        <div className="bg-background p-3 rounded-md text-sm text-left mb-6 border border-border">
+                            <p><span className="font-semibold text-text-secondary">Счет:</span> {getCategory(txToDelete.categoryId)?.name}</p>
+                            <p><span className="font-semibold text-text-secondary">Сумма:</span> {new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB' }).format(Math.abs(txToDelete.amount))}</p>
+                            {txToDelete.note && <p><span className="font-semibold text-text-secondary">Описание:</span> {txToDelete.note}</p>}
+                        </div>
+                        
+                        <div className="flex justify-center gap-4">
+                            <button onClick={cancelDelete} className="px-6 py-2.5 rounded-lg bg-border text-text-primary font-semibold hover:bg-background/80 w-full transition-colors">
+                                Отмена
+                            </button>
+                            <button onClick={confirmDelete} className="px-6 py-2.5 rounded-lg bg-red-600 text-white font-semibold hover:bg-red-700 w-full transition-colors">
+                                Удалить
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

@@ -5,15 +5,14 @@ import { auth, db } from './firebase'; // Импортируем настрое�
 // FIX: Removed modular imports from 'firebase/auth' as they were causing errors.
 // Auth functions will be called as methods on the imported `auth` object.
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { INITIAL_CATEGORIES, INITIAL_PARTICIPANTS } from '../constants';
+// FIX: Removed import of INITIAL_PARTICIPANTS as it is not exported from constants.
+import { INITIAL_CATEGORIES } from '../constants';
 
 // Функция для получения начальных данных для нового пользователя
 const getInitialUserState = () => ({
     categories: INITIAL_CATEGORIES,
     transactions: [],
     theme: 'Полночь',
-    participants: INITIAL_PARTICIPANTS,
-    bottomNavOpacity: 0.8,
 });
 
 

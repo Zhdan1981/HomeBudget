@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useBudget } from '../hooks/useBudget';
-import { Category, CategoryType } from '../types';
+import { Category } from '../types';
 import { ICONS, CATEGORY_COLORS } from '../constants';
 import SubPageHeader from '../components/SubPageHeader';
 
@@ -14,7 +14,6 @@ const EditCategoryPage: React.FC = () => {
     
     const [categoryData, setCategoryData] = useState<Partial<Category>>({
         name: '',
-        type: CategoryType.Expenses,
         icon: 'Wallet',
         color: CATEGORY_COLORS[0],
         balance: 0,
@@ -31,13 +30,13 @@ const EditCategoryPage: React.FC = () => {
         }
     }, [id, isEditing, state.categories, navigate]);
     
-    const handleChange = (field: keyof Category, value: any) => {
+    const handleChange = (field: keyof Omit<Category, 'type'>, value: any) => {
         setCategoryData(prev => ({ ...prev, [field]: value }));
     };
     
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!categoryData.name || !categoryData.type || !categoryData.icon || !categoryData.color) {
+        if (!categoryData.name || !categoryData.icon || !categoryData.color) {
             alert('Пожалуйста, заполните все поля.');
             return;
         }
@@ -47,10 +46,9 @@ const EditCategoryPage: React.FC = () => {
         } else {
             const newCategory: Category = {
                 id: new Date().toISOString(),
-                name: categoryData.name,
-                type: categoryData.type,
-                icon: categoryData.icon,
-                color: categoryData.color,
+                name: categoryData.name!,
+                icon: categoryData.icon!,
+                color: categoryData.color!,
                 balance: categoryData.balance || 0,
             };
             dispatch({ type: 'ADD_CATEGORY', payload: newCategory });
@@ -60,7 +58,7 @@ const EditCategoryPage: React.FC = () => {
     
     return (
         <div className="bg-background text-text-primary min-h-screen font-sans flex flex-col">
-            <SubPageHeader title={isEditing ? 'Редактировать категорию' : 'Новая категория'} />
+            <SubPageHeader title={isEditing ? 'Редактировать счет' : 'Новый счет'} />
             
             <main className="flex-grow p-4 overflow-y-auto">
                 <form id="category-form" onSubmit={handleSubmit} className="space-y-6">
@@ -88,17 +86,6 @@ const EditCategoryPage: React.FC = () => {
                             />
                         </div>
                     )}
-                    
-                    <div>
-                        <label className="block text-sm font-medium text-text-secondary mb-2">Тип</label>
-                        <div className="flex gap-2 bg-card p-1 rounded-lg">
-                            {Object.values(CategoryType).map(t => (
-                                <button type="button" key={t} onClick={() => handleChange('type', t)} className={`px-4 py-2 rounded-md text-sm font-semibold flex-1 transition-colors ${categoryData.type === t ? 'bg-accent text-accent-text' : 'text-text-secondary hover:bg-background'}`}>
-                                    {t}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
                     
                     <div>
                         <label className="block text-sm font-medium text-text-secondary mb-2">Иконка</label>

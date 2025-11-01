@@ -1,4 +1,5 @@
 
+
 import React from 'react';
 import { HashRouter, Routes, Route } from 'react-router-dom';
 import { BudgetProvider } from './context/BudgetContext';
@@ -6,10 +7,9 @@ import MainLayout from './layouts/MainLayout';
 import BudgetPage from './pages/BudgetPage';
 import HistoryPage from './pages/HistoryPage';
 import ChartsPage from './pages/ChartsPage';
-import CategoryTransactionPage from './components/AddTransactionModal';
+import CategoryTransactionPage from './pages/CategoryTransactionPage';
 import SettingsPage from './pages/SettingsPage';
 import EditCategoryPage from './pages/EditCategoryPage';
-import EditParticipantPage from './pages/EditParticipantPage';
 import AuthPage from './pages/AuthPage';
 import ProtectedRoute from './components/ProtectedRoute';
 
@@ -30,8 +30,6 @@ const App: React.FC = () => {
                         <Route path="/category/:id" element={<CategoryTransactionPage />} />
                         <Route path="/settings/category/new" element={<EditCategoryPage />} />
                         <Route path="/settings/category/:id" element={<EditCategoryPage />} />
-                        <Route path="/settings/participant/new" element={<EditParticipantPage />} />
-                        <Route path="/settings/participant/:name" element={<EditParticipantPage />} />
                     </Route>
                 </Routes>
             </HashRouter>

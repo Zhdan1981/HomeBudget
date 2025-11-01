@@ -1,8 +1,8 @@
 
 
 import React, { createContext, useReducer, useEffect, ReactNode, Dispatch, useContext, useCallback } from 'react';
-import { Category, Transaction, Theme, CategoryType } from '../types';
-import { INITIAL_CATEGORIES, INITIAL_PARTICIPANTS } from '../constants';
+import { Category, Transaction, Theme, TransactionType } from '../types';
+import { INITIAL_CATEGORIES } from '../constants';
 import { AuthContext } from './AuthContext';
 import { getUserData, saveUserData } from '../services/api';
 import { useDebounce } from '../hooks/useDebounce';
@@ -11,13 +11,12 @@ interface AppState {
     categories: Category[];
     transactions: Transaction[];
     theme: Theme;
-    participants: string[];
     isDataLoaded: boolean;
-    bottomNavOpacity: number;
 }
 
 type Action =
     | { type: 'ADD_TRANSACTION'; payload: Transaction }
+    | { type: 'DELETE_TRANSACTION'; payload: string }
     | { type: 'SET_THEME'; payload: Theme }
     | { type: 'SET_USER_DATA'; payload: Omit<AppState, 'isDataLoaded'> }
     | { type: 'REORDER_CATEGORIES'; payload: Category[] }
@@ -25,28 +24,20 @@ type Action =
     | { type: 'ADD_CATEGORY'; payload: Category }
     | { type: 'UPDATE_CATEGORY'; payload: Category }
     | { type: 'DELETE_CATEGORY'; payload: string }
-    | { type: 'ADD_PARTICIPANT'; payload: string }
-    | { type: 'UPDATE_PARTICIPANT'; payload: { oldName: string; newName: string } }
-    | { type: 'DELETE_PARTICIPANT'; payload: string }
     | { type: 'RESET_STATE' }
-    | { type: 'LOGOUT_USER' }
-    | { type: 'SET_BOTTOM_NAV_OPACITY'; payload: number };
+    | { type: 'LOGOUT_USER' };
 
 const initialState: AppState = {
     categories: [],
     transactions: [],
     theme: 'Полночь',
-    participants: [],
     isDataLoaded: false,
-    bottomNavOpacity: 0.8,
 };
 
 const getInitialUserState = (): Omit<AppState, 'isDataLoaded'> => ({
     categories: INITIAL_CATEGORIES,
     transactions: [],
     theme: 'Полночь',
-    participants: INITIAL_PARTICIPANTS,
-    bottomNavOpacity: 0.8,
 });
 
 const budgetReducer = (state: AppState, action: Action): AppState => {
@@ -67,6 +58,35 @@ const budgetReducer = (state: AppState, action: Action): AppState => {
                 return cat;
             });
             return { ...state, transactions: newTransactions, categories: newCategories };
+        }
+        case 'DELETE_TRANSACTION': {
+            const transactionId = action.payload;
+            const transactionToDelete = state.transactions.find(tx => tx.id === transactionId);
+
+            if (!transactionToDelete) {
+                return state;
+            }
+            
+            // Reverse the balance changes
+            const newCategories = state.categories.map(cat => {
+                // Re-add amount to the source category. Works for both positive (expense/transfer) and negative (income) amounts.
+                if (cat.id === transactionToDelete.categoryId) {
+                    return { ...cat, balance: cat.balance + transactionToDelete.amount };
+                }
+                // If it was a transfer, subtract amount from the destination category.
+                if (transactionToDelete.type === TransactionType.Transfer && cat.id === transactionToDelete.toCategoryId) {
+                    return { ...cat, balance: cat.balance - transactionToDelete.amount };
+                }
+                return cat;
+            });
+
+            const newTransactions = state.transactions.filter(tx => tx.id !== transactionId);
+
+            return {
+                ...state,
+                transactions: newTransactions,
+                categories: newCategories,
+            };
         }
         case 'SET_THEME':
             return { ...state, theme: action.payload };
@@ -108,37 +128,6 @@ const budgetReducer = (state: AppState, action: Action): AppState => {
                 categories: state.categories.filter(cat => cat.id !== action.payload),
                 transactions: state.transactions.filter(tx => tx.categoryId !== action.payload && tx.toCategoryId !== action.payload),
             };
-        case 'ADD_PARTICIPANT':
-            if (state.participants.includes(action.payload)) {
-                return state;
-            }
-            return {
-                ...state,
-                participants: [...state.participants, action.payload],
-            };
-        case 'UPDATE_PARTICIPANT':
-            return {
-                ...state,
-                participants: state.participants.map(p =>
-                    p === action.payload.oldName ? action.payload.newName : p
-                ),
-                transactions: state.transactions.map(tx =>
-                    tx.participant === action.payload.oldName
-                        ? { ...tx, participant: action.payload.newName }
-                        : tx
-                ),
-            };
-        case 'DELETE_PARTICIPANT':
-            if (action.payload === 'Общие') return state;
-            return {
-                ...state,
-                participants: state.participants.filter(p => p !== action.payload),
-                transactions: state.transactions.map(tx =>
-                    tx.participant === action.payload
-                        ? { ...tx, participant: 'Общие' }
-                        : tx
-                ),
-            };
         case 'RESET_STATE':
             return {
                 ...getInitialUserState(),
@@ -147,8 +136,6 @@ const budgetReducer = (state: AppState, action: Action): AppState => {
             };
         case 'LOGOUT_USER':
             return initialState;
-        case 'SET_BOTTOM_NAV_OPACITY':
-            return { ...state, bottomNavOpacity: action.payload };
         default:
             return state;
     }

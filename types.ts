@@ -1,11 +1,5 @@
 import { LucideIcon } from 'lucide-react';
 
-export enum CategoryType {
-    Personal = "Личные",
-    Expenses = "Расходы",
-    Shared = "Общие"
-}
-
 export enum TransactionType {
     Expense = "Расход",
     Income = "Доход",
@@ -15,7 +9,6 @@ export enum TransactionType {
 export interface Category {
     id: string;
     name: string;
-    type: CategoryType;
     balance: number;
     icon: string; // Corresponds to key in ICONS map
     color: string; // Tailwind color class
@@ -26,7 +19,6 @@ export interface Transaction {
     categoryId: string;
     amount: number;
     type: TransactionType;
-    participant: string;
     note: string;
     date: string; // ISO string
     toCategoryId?: string; // For transfers

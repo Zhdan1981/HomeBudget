@@ -1,9 +1,8 @@
-import React, { useRef, useState, useContext } from 'react';
+import React, { useRef, useState, useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useBudget } from '../hooks/useBudget';
-import { CategoryType } from '../types';
 import { ICONS } from '../constants';
-import { Plus, Pencil, Trash2, ChevronDown, Download, Upload, RefreshCw, SunMoon, ChevronRight, User, LogOut, Droplets } from 'lucide-react';
+import { Plus, Pencil, Trash2, ChevronDown, Download, Upload, RefreshCw, SunMoon, ChevronRight, LogOut } from 'lucide-react';
 import SubPageHeader from '../components/SubPageHeader';
 import ThemeSwitcher from '../components/ThemeSwitcher';
 import { AuthContext } from '../context/AuthContext';
@@ -26,16 +25,6 @@ const SettingsPage: React.FC = () => {
         }
     };
     
-    const handleDeleteParticipant = (name: string) => {
-        if (name === 'Общие') {
-            alert('Нельзя удалить основного участника "Общие".');
-            return;
-        }
-        if (window.confirm(`Вы уверены, что хотите удалить участника "${name}"? Все его транзакции будут переназначены на "Общие".`)) {
-            dispatch({ type: 'DELETE_PARTICIPANT', payload: name });
-        }
-    };
-
     const handleExport = () => {
         try {
             const { isDataLoaded, ...dataToExport } = state;
@@ -70,7 +59,7 @@ const SettingsPage: React.FC = () => {
                 const text = e.target?.result;
                 if (typeof text !== 'string') throw new Error("File content is not a string");
                 const parsedState = JSON.parse(text);
-                if (parsedState.categories && parsedState.transactions && parsedState.theme && parsedState.participants) {
+                if (parsedState.categories && parsedState.transactions && parsedState.theme) {
                     if (window.confirm("Вы уверены, что хотите импортировать эти данные? Все текущие данные будут перезаписаны.")) {
                         dispatch({ type: 'SET_USER_DATA', payload: parsedState });
                         alert("Данные успешно импортированы.");
@@ -112,74 +101,42 @@ const SettingsPage: React.FC = () => {
         <div className="bg-background text-text-primary min-h-screen font-sans">
             <SubPageHeader title="Настройки" onBack={() => navigate('/')} />
             <div className="p-4 max-w-md mx-auto">
-                <AccordionItem title="Персонализация" defaultOpen={true}>
+                <AccordionItem title="Персонализация" defaultOpen={false}>
                     <div className="space-y-6 pt-2">
                         {/* Category Management */}
                         <div>
-                             <h4 className="text-sm font-semibold text-text-secondary mb-2">Категории</h4>
-                            <div className="space-y-4">
-                                {Object.values(CategoryType).map(type => (
-                                    <div key={type}>
-                                        <h5 className="text-xs font-semibold text-text-secondary/80 mb-2 px-1">{type}</h5>
-                                        <div className="bg-background rounded-md overflow-hidden border border-border">
-                                            {state.categories.filter(c => c.type === type).map((category, index, arr) => {
-                                                const Icon = ICONS[category.icon] || ICONS.Wallet;
-                                                return (
-                                                    <div key={category.id} className={`flex items-center p-3 gap-3 ${index < arr.length - 1 ? 'border-b border-border' : ''}`}>
-                                                        <div className={`p-1.5 rounded-full ${category.color.replace('text-', 'bg-')}/20 ${category.color}`}>
-                                                            <Icon className="w-5 h-5" />
-                                                        </div>
-                                                        <span className="flex-grow font-medium text-sm">{category.name}</span>
-                                                        <button onClick={() => navigate(`/settings/category/${category.id}`)} className="p-2 text-text-secondary hover:text-text-primary rounded-full hover:bg-border transition-colors">
-                                                            <Pencil size={18} />
-                                                        </button>
-                                                        <button onClick={() => handleDeleteCategory(category.id, category.name)} className="p-2 text-text-secondary hover:text-red-500 rounded-full hover:bg-border transition-colors">
-                                                            <Trash2 size={18} />
-                                                        </button>
-                                                    </div>
-                                                );
-                                            })}
+                             <h4 className="text-sm font-semibold text-text-secondary mb-2">Счета</h4>
+                            <div className="bg-background rounded-md overflow-hidden border border-border">
+                                {state.categories.map((category, index, arr) => {
+                                    const Icon = ICONS[category.icon] || ICONS.Wallet;
+                                    const transactionCount = state.transactions.filter(
+                                        tx => tx.categoryId === category.id || tx.toCategoryId === category.id
+                                    ).length;
+                                    return (
+                                        <div key={category.id} className={`flex items-center p-3 gap-3 ${index < arr.length - 1 ? 'border-b border-border' : ''}`}>
+                                            <div className={`p-1.5 rounded-full ${category.color.replace('text-', 'bg-')}/20 ${category.color}`}>
+                                                <Icon className="w-5 h-5" />
+                                            </div>
+                                            <div className="flex-grow">
+                                                <p className="font-medium text-sm text-text-primary">{category.name}</p>
+                                                <p className="text-xs text-text-secondary">Транзакций: {transactionCount}</p>
+                                            </div>
+                                            <button onClick={() => navigate(`/settings/category/${category.id}`)} className="p-2 text-text-secondary hover:text-text-primary rounded-full hover:bg-border transition-colors">
+                                                <Pencil size={18} />
+                                            </button>
+                                            <button onClick={() => handleDeleteCategory(category.id, category.name)} className="p-2 text-text-secondary hover:text-red-500 rounded-full hover:bg-border transition-colors">
+                                                <Trash2 size={18} />
+                                            </button>
                                         </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                             <button 
                                 onClick={() => navigate('/settings/category/new')}
                                 className="w-full mt-3 flex items-center justify-center gap-2 bg-background border-2 border-dashed border-border text-text-secondary font-semibold py-2 rounded-lg hover:border-accent hover:text-accent transition-colors text-sm"
                             >
                                 <Plus size={18} />
-                                <span>Добавить категорию</span>
-                            </button>
-                        </div>
-                        {/* Participant Management */}
-                        <div>
-                            <h4 className="text-sm font-semibold text-text-secondary mb-2">Участники</h4>
-                             <div className="bg-background rounded-md overflow-hidden border border-border">
-                                {state.participants.map((participant, index) => (
-                                     <div key={participant} className={`flex items-center p-3 gap-3 ${index < state.participants.length - 1 ? 'border-b border-border' : ''}`}>
-                                        <div className={`p-1.5 rounded-full bg-background text-text-secondary`}>
-                                            <User size={18} />
-                                        </div>
-                                        <span className="flex-grow font-medium text-sm">{participant}</span>
-                                        <button onClick={() => navigate(`/settings/participant/${participant}`)} className="p-2 text-text-secondary hover:text-text-primary rounded-full hover:bg-border transition-colors">
-                                            <Pencil size={18} />
-                                        </button>
-                                        <button 
-                                            onClick={() => handleDeleteParticipant(participant)} 
-                                            className="p-2 text-text-secondary hover:text-red-500 rounded-full hover:bg-border transition-colors disabled:opacity-30 disabled:hover:text-text-secondary" 
-                                            disabled={participant === 'Общие'}
-                                        >
-                                            <Trash2 size={18} />
-                                        </button>
-                                    </div>
-                                ))}
-                            </div>
-                            <button 
-                                onClick={() => navigate('/settings/participant/new')}
-                                className="w-full mt-3 flex items-center justify-center gap-2 bg-background border-2 border-dashed border-border text-text-secondary font-semibold py-2 rounded-lg hover:border-accent hover:text-accent transition-colors text-sm"
-                            >
-                                <Plus size={18} />
-                                <span>Добавить участника</span>
+                                <span>Добавить счет</span>
                             </button>
                         </div>
                     </div>
@@ -189,7 +146,7 @@ const SettingsPage: React.FC = () => {
                         <div className="bg-background rounded-md overflow-hidden border border-border">
                             <button
                                 onClick={() => setThemeSwitcherOpen(true)}
-                                className="flex items-center p-3 gap-3 w-full text-left hover:bg-border transition-colors border-b border-border"
+                                className="flex items-center p-3 gap-3 w-full text-left hover:bg-border transition-colors"
                             >
                                 <div className={`p-1.5 rounded-full bg-accent/20 text-accent`}>
                                     <SunMoon size={18} />
@@ -198,28 +155,6 @@ const SettingsPage: React.FC = () => {
                                 <span className="text-sm text-text-secondary mr-2">{state.theme}</span>
                                 <ChevronRight size={18} className="text-text-secondary" />
                             </button>
-                            <div className="flex items-center justify-between p-3 gap-3 w-full text-left">
-                                <div className="flex items-center gap-3">
-                                    <div className={`p-1.5 rounded-full bg-indigo-500/20 text-indigo-500`}>
-                                        <Droplets size={18} />
-                                    </div>
-                                    <span className="font-medium text-sm">Прозрачность панели</span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <input
-                                        type="range"
-                                        min="0.1"
-                                        max="1"
-                                        step="0.05"
-                                        value={state.bottomNavOpacity}
-                                        onChange={(e) => dispatch({ type: 'SET_BOTTOM_NAV_OPACITY', payload: parseFloat(e.target.value) })}
-                                        className="w-24 h-2 bg-border rounded-lg appearance-none cursor-pointer accent-accent"
-                                    />
-                                    <span className="text-xs font-mono text-text-secondary w-8 text-right">
-                                        {Math.round(state.bottomNavOpacity * 100)}%
-                                    </span>
-                                </div>
-                            </div>
                         </div>
                     </div>
                 </AccordionItem>

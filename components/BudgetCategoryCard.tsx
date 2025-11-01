@@ -1,12 +1,12 @@
 
+
 import React from 'react';
-import { Category, CategoryType } from '../types';
+import { Category } from '../types';
 import { ICONS } from '../constants';
 
 interface BudgetCategoryCardProps {
     category: Category;
     onClick: () => void;
-    onUpdateBalance: (newBalance: number) => void;
     onDragStart: () => void;
     onDragEnter: () => void;
     onDragEnd: () => void;
@@ -16,12 +16,6 @@ interface BudgetCategoryCardProps {
 
 const BudgetCategoryCard: React.FC<BudgetCategoryCardProps> = ({ category, onClick, onDragStart, onDragEnter, onDragEnd, onDragOver, isDragging }) => {
     const IconComponent = ICONS[category.icon] || ICONS['Wallet'];
-
-    const categoryTypeStyles: { [key in CategoryType]: string } = {
-        [CategoryType.Personal]: 'text-sky-500',
-        [CategoryType.Expenses]: 'text-amber-500',
-        [CategoryType.Shared]: 'text-emerald-500',
-    };
 
     const formattedBalance = new Intl.NumberFormat('ru-RU', {
         style: 'currency',
@@ -44,9 +38,6 @@ const BudgetCategoryCard: React.FC<BudgetCategoryCardProps> = ({ category, onCli
             </div>
             <div className="flex-grow">
                 <p className="font-semibold text-text-primary">{category.name}</p>
-                <p className={`mt-1 text-xs font-semibold ${categoryTypeStyles[category.type]}`}>
-                    {category.type}
-                </p>
             </div>
             <p 
                 className="font-bold text-lg text-text-primary whitespace-nowrap"
