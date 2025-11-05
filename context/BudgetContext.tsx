@@ -122,12 +122,56 @@ const budgetReducer = (state: AppState, action: Action): AppState => {
                     cat.id === action.payload.id ? action.payload : cat
                 ),
             };
-        case 'DELETE_CATEGORY':
+        case 'DELETE_CATEGORY': {
+            const categoryIdToDelete = action.payload;
+
+            // Find all transactions that will be deleted
+            const transactionsToDelete = state.transactions.filter(
+                tx => tx.categoryId === categoryIdToDelete || tx.toCategoryId === categoryIdToDelete
+            );
+
+            // Start with the current categories
+            let updatedCategories = [...state.categories];
+
+            // For each transaction that will be deleted, revert its effect on OTHER categories
+            transactionsToDelete.forEach(tx => {
+                // We only care about transfers, as they are the only ones affecting a second category.
+                if (tx.type === TransactionType.Transfer) {
+                    // Case 1: Transfer was FROM the deleted category TO another category.
+                    // The other category's balance increased, so we must decrease it.
+                    if (tx.categoryId === categoryIdToDelete && tx.toCategoryId) {
+                        updatedCategories = updatedCategories.map(cat => 
+                            cat.id === tx.toCategoryId 
+                                ? { ...cat, balance: cat.balance - tx.amount }
+                                : cat
+                        );
+                    }
+                    // Case 2: Transfer was FROM another category TO the deleted category.
+                    // The other category's balance decreased, so we must increase it.
+                    else if (tx.toCategoryId === categoryIdToDelete) {
+                        updatedCategories = updatedCategories.map(cat =>
+                            cat.id === tx.categoryId
+                                ? { ...cat, balance: cat.balance + tx.amount }
+                                : cat
+                        );
+                    }
+                }
+            });
+
+            // Now, filter out the deleted category itself
+            const finalCategories = updatedCategories.filter(cat => cat.id !== categoryIdToDelete);
+
+            // And filter out all related transactions from the transactions list
+            const finalTransactions = state.transactions.filter(
+                tx => tx.categoryId !== categoryIdToDelete && tx.toCategoryId !== categoryIdToDelete
+            );
+
             return {
                 ...state,
-                categories: state.categories.filter(cat => cat.id !== action.payload),
-                transactions: state.transactions.filter(tx => tx.categoryId !== action.payload && tx.toCategoryId !== action.payload),
+                categories: finalCategories,
+                transactions: finalTransactions,
             };
+        }
         case 'RESET_STATE':
             return {
                 ...getInitialUserState(),

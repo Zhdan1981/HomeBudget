@@ -1,4 +1,4 @@
-import React, { useRef, useState, useContext, useEffect } from 'react';
+import React, { useRef, useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useBudget } from '../hooks/useBudget';
 import { ICONS } from '../constants';
@@ -6,6 +6,7 @@ import { Plus, Pencil, Trash2, ChevronDown, Download, Upload, RefreshCw, SunMoon
 import SubPageHeader from '../components/SubPageHeader';
 import ThemeSwitcher from '../components/ThemeSwitcher';
 import { AuthContext } from '../context/AuthContext';
+import { Category } from '../types';
 
 const SettingsPage: React.FC = () => {
     const { state, dispatch } = useBudget();
@@ -13,16 +14,26 @@ const SettingsPage: React.FC = () => {
     const navigate = useNavigate();
     const importInputRef = useRef<HTMLInputElement>(null);
     const [isThemeSwitcherOpen, setThemeSwitcherOpen] = useState(false);
+    const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
 
     const handleLogout = async () => {
         await logout();
         navigate('/auth');
     };
 
-    const handleDeleteCategory = (categoryId: string, categoryName: string) => {
-        if (window.confirm(`Вы уверены, что хотите удалить категорию "${categoryName}"? Все связанные транзакции также будут удалены.`)) {
-            dispatch({ type: 'DELETE_CATEGORY', payload: categoryId });
+    const handleDeleteClick = (category: Category) => {
+        setCategoryToDelete(category);
+    };
+    
+    const confirmDelete = () => {
+        if (categoryToDelete) {
+            dispatch({ type: 'DELETE_CATEGORY', payload: categoryToDelete.id });
+            setCategoryToDelete(null);
         }
+    };
+    
+    const cancelDelete = () => {
+        setCategoryToDelete(null);
     };
     
     const handleExport = () => {
@@ -101,7 +112,7 @@ const SettingsPage: React.FC = () => {
         <div className="bg-background text-text-primary min-h-screen font-sans">
             <SubPageHeader title="Настройки" onBack={() => navigate('/')} />
             <div className="p-4 max-w-md mx-auto">
-                <AccordionItem title="Персонализация" defaultOpen={false}>
+                <AccordionItem title="Персонализация" defaultOpen={true}>
                     <div className="space-y-6 pt-2">
                         {/* Category Management */}
                         <div>
@@ -124,7 +135,7 @@ const SettingsPage: React.FC = () => {
                                             <button onClick={() => navigate(`/settings/category/${category.id}`)} className="p-2 text-text-secondary hover:text-text-primary rounded-full hover:bg-border transition-colors">
                                                 <Pencil size={18} />
                                             </button>
-                                            <button onClick={() => handleDeleteCategory(category.id, category.name)} className="p-2 text-text-secondary hover:text-red-500 rounded-full hover:bg-border transition-colors">
+                                            <button onClick={() => handleDeleteClick(category)} className="p-2 text-text-secondary hover:text-red-500 rounded-full hover:bg-border transition-colors">
                                                 <Trash2 size={18} />
                                             </button>
                                         </div>
@@ -188,6 +199,25 @@ const SettingsPage: React.FC = () => {
                 isOpen={isThemeSwitcherOpen} 
                 onClose={() => setThemeSwitcherOpen(false)}
             />
+
+            {categoryToDelete && (
+                <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 animate-fade-in" onClick={cancelDelete}>
+                    <div className="bg-card rounded-xl p-6 w-11/12 max-w-sm text-center shadow-2xl animate-scale-in" onClick={e => e.stopPropagation()}>
+                        <h3 className="text-lg font-bold text-text-primary mb-2">Подтвердите удаление</h3>
+                        <p className="text-text-secondary mb-6">
+                            Вы уверены, что хотите удалить счет "{categoryToDelete.name}"? Все связанные транзакции будут удалены. Это действие необратимо.
+                        </p>
+                        <div className="flex justify-center gap-4">
+                            <button onClick={cancelDelete} className="px-6 py-2.5 rounded-lg bg-border text-text-primary font-semibold hover:bg-background/80 w-full transition-colors">
+                                Отмена
+                            </button>
+                            <button onClick={confirmDelete} className="px-6 py-2.5 rounded-lg bg-red-600 text-white font-semibold hover:bg-red-700 w-full transition-colors">
+                                Удалить
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
